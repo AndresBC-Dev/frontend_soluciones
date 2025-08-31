@@ -153,6 +153,24 @@ export const createPeriod = async (periodData: CreatePeriodDTO): Promise<Period>
   }
 };
 
+export const updatePeriod = async (id: number, periodData: Partial<CreatePeriodDTO>): Promise<Period> => {
+  try {
+    console.log('🔄 Updating period...', id, periodData);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(periodData)
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period updated:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error updating period:', error);
+    throw error;
+  }
+};
+
 export const deletePeriod = async (id: number): Promise<void> => {
   try {
     console.log('🗑️ Deleting period:', id);
@@ -165,6 +183,24 @@ export const deletePeriod = async (id: number): Promise<void> => {
     console.log('✅ Period deleted successfully');
   } catch (error) {
     console.error('❌ Error deleting period:', error);
+    throw error;
+  }
+};
+
+export const deactivatePeriod = async (id: number): Promise<Period> => {
+  try {
+    console.log('🔄 Deactivating period:', id);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ is_active: false })
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period deactivated:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error deactivating period:', error);
     throw error;
   }
 };

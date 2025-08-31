@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Calendar, X, Loader2, Plus } from 'lucide-react';
 import { createPeriod } from '../services/evaluationService';
 import type { Period, CreatePeriodDTO } from '../services/evaluationService';
+import { formatDateForBackend } from '../utils/dateHelpers';
 
 interface CrearPeriodoModalProps {
   show: boolean;
@@ -38,7 +39,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     // ✅ Manejar checkbox para isActive
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -46,7 +47,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
     }
-    
+
     // Limpiar error cuando el usuario empiece a escribir
     if (error) setError(null);
   };
@@ -58,25 +59,25 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     if (!form.startDate) return 'La fecha de inicio es obligatoria.';
     if (!form.endDate) return 'La fecha de fin es obligatoria.';
     if (!form.dueDate) return 'La fecha límite es obligatoria.';
-    
+
     const startDate = new Date(form.startDate);
     const endDate = new Date(form.endDate);
     const dueDate = new Date(form.dueDate);
-    
+
     if (endDate <= startDate) {
       return 'La fecha de fin debe ser posterior a la fecha de inicio.';
     }
-    
+
     if (dueDate < startDate) {
       return 'La fecha límite no puede ser anterior a la fecha de inicio.';
     }
-    
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -91,10 +92,10 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
       const periodData: CreatePeriodDTO = {
         name: form.name.trim(),
         description: form.description.trim(),
-        start_date: form.startDate,  // ✅ snake_case
-        end_date: form.endDate,      // ✅ snake_case
-        due_date: form.dueDate,      // ✅ snake_case
-        is_active: form.isActive     // ✅ snake_case
+        start_date: formatDateForBackend(form.startDate),  // ✅ USAR LA UTILIDAD
+        end_date: formatDateForBackend(form.endDate),      // ✅ USAR LA UTILIDAD
+        due_date: formatDateForBackend(form.dueDate),      // ✅ USAR LA UTILIDAD
+        is_active: form.isActive
       };
 
       console.log('🔄 Creating period with data:', periodData);
@@ -106,7 +107,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
 
       // Mostrar éxito
       setShowSuccess(true);
-      
+
       // Esperar un momento para que el usuario vea el mensaje
       setTimeout(() => {
         onCreated(newPeriod);
@@ -123,7 +124,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
 
   const handleClose = () => {
     if (loading) return;
-    
+
     setForm({
       name: '',
       description: '',
@@ -142,7 +143,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
     const currentMonth = new Date().getMonth() + 1;
-    
+
     const suggestions = [
       `Q${Math.ceil(currentMonth / 3)} ${currentYear}`,
       `Q${Math.ceil(currentMonth / 3) + 1 > 4 ? 1 : Math.ceil(currentMonth / 3) + 1} ${Math.ceil(currentMonth / 3) + 1 > 4 ? nextYear : currentYear}`,
@@ -153,7 +154,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
       `Mensual ${new Date().toLocaleDateString('es-ES', { month: 'long' })} ${currentYear}`,
       `Evaluación ${currentYear}-${(currentYear + 1).toString().slice(-2)}`
     ];
-    
+
     return suggestions;
   };
 
@@ -162,20 +163,20 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     try {
       // ✅ Debug: Ver qué tipo de fecha recibimos
       console.log('🔄 Formatting date:', dateString, typeof dateString);
-      
+
       const date = new Date(dateString);
-      
+
       if (isNaN(date.getTime())) {
         console.warn('❌ Invalid date:', dateString);
         return dateString;
       }
-      
+
       const formatted = date.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
-      
+
       console.log('✅ Formatted date:', dateString, '->', formatted);
       return formatted;
     } catch (error) {
@@ -186,19 +187,19 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
 
   const formatDateRange = () => {
     if (!form.startDate || !form.endDate) return '';
-    
+
     const start = new Date(form.startDate).toLocaleDateString('es-ES', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
     });
-    
+
     const end = new Date(form.endDate).toLocaleDateString('es-ES', {
       day: 'numeric',
-      month: 'short', 
+      month: 'short',
       year: 'numeric'
     });
-    
+
     return `${start} - ${end}`;
   };
 
@@ -218,7 +219,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        
+
         {/* Success State */}
         {showSuccess ? (
           <div className="text-center py-8">
@@ -236,8 +237,8 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
                 <Calendar className="w-6 h-6 text-blue-500" />
                 Crear Nuevo Período
               </h3>
-              <button 
-                onClick={handleClose} 
+              <button
+                onClick={handleClose}
                 disabled={loading}
                 className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -247,7 +248,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              
+
               {/* ✅ Información básica */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nombre */}
@@ -336,7 +337,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
                     disabled={loading}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Fecha de Fin *
@@ -432,9 +433,9 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
                     </>
                   )}
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={handleClose} 
+                  onClick={handleClose}
                   disabled={loading}
                   className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50"
                 >

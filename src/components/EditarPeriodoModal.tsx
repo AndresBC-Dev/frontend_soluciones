@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, X, Loader2, Save } from 'lucide-react';
 import { updatePeriod } from '../services/evaluationService';
 import { formatDateForBackend, formatDateFromBackend } from '../utils/dateHelpers';
-import type { Period } from '../../src/pages/GestionEvaluacionesPage/types/index';
+import type { Period } from '../../src/types/evaluation';
 
 interface EditarPeriodoModalProps {
     show: boolean;

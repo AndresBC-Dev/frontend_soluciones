@@ -10,13 +10,34 @@ interface EditarCriterioModalProps {
   onUpdated: (updatedCriteria: Criteria) => void;
 }
 
-type Category = 'productividad' | 'conducta_laboral' | 'habilidades';
+type LocalCategory = 'productividad' | 'conducta_laboral' | 'habilidades';
+type ApiCategory = 'productivity' | 'work_conduct' | 'skills';
 
-const commonCategories: Category[] = [
+const commonCategories: LocalCategory[] = [
   'productividad',
   'conducta_laboral',
   'habilidades'
 ];
+
+// Función para mapear categorías locales a API
+const mapCategoryToApi = (localCategory: LocalCategory): ApiCategory => {
+  const categoryMap: Record<LocalCategory, ApiCategory> = {
+    'productividad': 'productivity',
+    'conducta_laboral': 'work_conduct',
+    'habilidades': 'skills'
+  };
+  return categoryMap[localCategory];
+};
+
+// Función para mapear categorías API a locales (para cuando cargas datos)
+const mapCategoryFromApi = (apiCategory: string): LocalCategory => {
+  const categoryMap: Record<string, LocalCategory> = {
+    'productivity': 'productividad',
+    'work_conduct': 'conducta_laboral',
+    'skills': 'habilidades'
+  };
+  return categoryMap[apiCategory] || 'habilidades';
+};
 
 const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
   show,
@@ -28,7 +49,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
     name: '',
     description: '',
     weight: '',
-    category: '' as Category | ''
+    category: '' as LocalCategory | ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -41,7 +62,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
         name: criteria.name,
         description: criteria.description,
         weight: criteria.weight.toString(),
-        category: criteria.category as Category
+        category: mapCategoryFromApi(criteria.category) // Mapear de API a local
       });
     }
   }, [criteria]);
@@ -58,7 +79,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
     if (!form.weight.trim()) return 'El peso es obligatorio.';
     if (!form.category.trim()) return 'La categoría es obligatoria.';
 
-    if (!commonCategories.includes(form.category as Category)) {
+    if (!commonCategories.includes(form.category as LocalCategory)) {
       return 'La categoría debe ser productividad, conducta_laboral o habilidades.';
     }
 
@@ -88,7 +109,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: form.category as Category
+        category: mapCategoryToApi(form.category as LocalCategory) // MAPEAR A API
       };
 
       const updatedCriteria = await updateCriteria(criteria.id, updateData);

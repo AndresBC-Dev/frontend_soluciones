@@ -49,7 +49,7 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, onClo
         name: template.name,
         description: template.description || '',
         selectedCriteria: template.criteria.map(c => ({
-          criteriaId: c.criteria_id,
+          criteriaId: c.criteriaId,
           weight: Math.round(c.weight * 100), // Convert to percentage
           category: mapCategory(c.category),
         })),

@@ -16,27 +16,37 @@ interface CriteriaForm {
   category: string;
 }
 
+// Tipos locales (UI) y API
+type LocalCategory = 'productividad' | 'conducta_laboral' | 'habilidades';
+type ApiCategory = 'productivity' | 'work_conduct' | 'skills';
+
+// Función para mapear categorías locales a API
+const mapCategoryToApi = (localCategory: LocalCategory): ApiCategory => {
+  const categoryMap: Record<LocalCategory, ApiCategory> = {
+    'productividad': 'productivity',
+    'conducta_laboral': 'work_conduct',
+    'habilidades': 'skills'
+  };
+  return categoryMap[localCategory];
+};
+
 const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, onCreated }) => {
   const [form, setForm] = useState<CriteriaForm>({
     name: '',
     description: '',
     weight: '',
-    category: '' as Category | '',
+    category: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-
-
-  type Category = 'productividad' | 'conducta_laboral' | 'habilidades';
-  const commonCategories: Category[] = [
+  const commonCategories: LocalCategory[] = [
     'productividad',
     'conducta_laboral',
     'habilidades'
   ];
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -52,7 +62,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     if (!form.weight.trim()) return 'El peso es obligatorio.';
     if (!form.category.trim()) return 'La categoría es obligatoria.';
 
-    if (!commonCategories.includes(form.category as Category)) {
+    if (!commonCategories.includes(form.category as LocalCategory)) {
       return 'La categoría debe ser productividad, conducta_laboral o habilidades.';
     }
 
@@ -77,12 +87,12 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     setError(null);
 
     try {
-      // Crear criterio usando la API real
+      // AQUÍ ESTÁ LA CORRECCIÓN: Usar mapCategoryToApi
       const criteriaData: CreateCriteriaDTO = {
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: form.category as Category
+        category: mapCategoryToApi(form.category as LocalCategory) // <-- USAR LA FUNCIÓN DE MAPEO
       };
 
       const newCriteria = await createCriteria(criteriaData);

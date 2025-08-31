@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, X, Loader2, Save } from 'lucide-react';
+import { Calendar, X, Loader2, Save, Plus } from 'lucide-react';
 import { createPeriod } from '../services/evaluationService';
 import { formatDateForBackend } from '../utils/dateHelpers';
 import type { Period } from '../types/evaluation';
@@ -10,8 +10,17 @@ interface CrearPeriodoModalProps {
   onCreated: (period: Period) => void;
 }
 
+interface PeriodForm {
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  dueDate: string;
+  isActive: boolean;
+}
+
 const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, onCreated }) => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<PeriodForm>({
     name: '',
     description: '',
     startDate: '',
@@ -23,7 +32,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -34,6 +43,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     if (error) setError(null);
   };
 
+  // ✅ Validaciones
   const validateForm = (): string | null => {
     if (!form.name.trim()) return 'El nombre del período es obligatorio.';
     if (!form.description.trim()) return 'La descripción es obligatoria.';
@@ -107,6 +117,35 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     onClose();
   };
 
+  // ✅ Sugerencias de nombres
+  const generateSuggestedNames = () => {
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+    const currentMonth = new Date().getMonth() + 1;
+
+    return [
+      `Q${Math.ceil(currentMonth / 3)} ${currentYear}`,
+      `Semestre ${currentMonth <= 6 ? 'I' : 'II'} ${currentYear}`,
+      `Anual ${currentYear}`,
+      `Anual ${nextYear}`,
+      `Mensual ${new Date().toLocaleDateString('es-ES', { month: 'long' })} ${currentYear}`,
+      `Evaluación ${currentYear}-${(currentYear + 1).toString().slice(-2)}`
+    ];
+  };
+
+  // ✅ Formato de fecha
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const formatDateRange = () => {
+    if (!form.startDate || !form.endDate) return '';
+    return `${formatDate(form.startDate)} - ${formatDate(form.endDate)}`;
+  };
+
   if (!show) return null;
 
   return (
@@ -115,9 +154,9 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-blue-500" />
-            Crear Período
+            Crear Nuevo Período
           </h3>
-          <button onClick={handleClose} disabled={loading} className="text-gray-500 hover:text-gray-700">
+          <button onClick={handleClose} disabled={loading} className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -128,111 +167,135 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre del Período *
-            </label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-lg"
-              disabled={loading}
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Nombre + Estado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Período *</label>
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                type="text"
+                placeholder="Ej: Q1 2025, Semestre I 2025..."
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
+            <div className="flex items-center">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  name="isActive"
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  disabled={loading}
+                />
+                <span className="text-sm">{form.isActive ? 'Período activo' : 'Período inactivo'}</span>
+              </label>
+            </div>
           </div>
 
+          {/* Descripción */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descripción *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Descripción *</label>
             <textarea
               name="description"
               value={form.description}
               onChange={handleChange}
               rows={3}
-              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="Describe el propósito y objetivos..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
               disabled={loading}
-              required
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          {/* Sugerencias */}
+          <div>
+            <p className="text-sm text-gray-700 mb-2">Sugerencias de nombres:</p>
+            <div className="flex flex-wrap gap-2">
+              {generateSuggestedNames().map(suggestion => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, name: suggestion }))}
+                  className="text-xs px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full border border-blue-200"
+                  disabled={loading}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fechas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Inicio *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Inicio *</label>
               <input
                 name="startDate"
-                type="date"
                 value={form.startDate}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                type="date"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
-                required
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Fin *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha de Fin *</label>
               <input
                 name="endDate"
-                type="date"
                 value={form.endDate}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                type="date"
+                min={form.startDate}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
-                required
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Fecha Límite *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Límite *</label>
               <input
                 name="dueDate"
-                type="date"
                 value={form.dueDate}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                type="date"
+                min={form.startDate}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 disabled={loading}
-                required
               />
+              <p className="text-xs text-gray-500 mt-1">Fecha límite para completar evaluaciones</p>
             </div>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <label className="flex items-center cursor-pointer">
-              <input
-                name="isActive"
-                type="checkbox"
-                checked={form.isActive}
-                onChange={handleChange}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                disabled={loading}
-              />
-              <div className="ml-3">
-                <span className="text-sm font-medium text-gray-700">
-                  Período activo
-                </span>
-                <p className="text-xs text-gray-500">
-                  {form.isActive
-                    ? 'El período estará activo y visible para crear evaluaciones'
-                    : 'El período estará inactivo y no se podrá usar para nuevas evaluaciones'}
-                </p>
+          {/* Preview */}
+          {form.name && form.startDate && form.endDate && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Vista previa:</h4>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-medium text-blue-900">{form.name}</p>
+                  <p className="text-sm text-blue-700 mb-2">{formatDateRange()}</p>
+                  {form.description && (
+                    <p className="text-xs text-blue-600 mb-2">"{form.description}"</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-blue-600">
+                    <span>Estado: {form.isActive ? 'Activo' : 'Inactivo'}</span>
+                    {form.dueDate && <span>Límite: {formatDate(form.dueDate)}</span>}
+                  </div>
+                </div>
+                <Calendar className="w-8 h-8 text-blue-500 ml-4" />
               </div>
-            </label>
-          </div>
+            </div>
+          )}
 
+          {/* Botones */}
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-lg hover:from-blue-600 hover:to-blue-700 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <>

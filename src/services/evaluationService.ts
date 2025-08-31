@@ -10,7 +10,7 @@ export type {
   CreateCriteriaDTO,
   CreatePeriodDTO,
   CreateTemplateDTO,
-  CreateEvaluationsFromTemplateDTO
+  CreateEvaluationsFromTemplateDTO,
 } from '../types/evaluation';
 
 import type {
@@ -22,7 +22,7 @@ import type {
   CreateCriteriaDTO,
   CreatePeriodDTO,
   CreateTemplateDTO,
-  CreateEvaluationsFromTemplateDTO
+  CreateEvaluationsFromTemplateDTO,
 } from '../types/evaluation';
 
 // Headers de autenticación
@@ -30,7 +30,7 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem('token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+    'Authorization': `Bearer ${token}`,
   };
 };
 
@@ -51,99 +51,13 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
   return result.data || result;
 };
 
-// ==================== PERIODS ====================
-export const getPeriods = async (): Promise<Period[]> => {
-  try {
-    console.log('🔍 Fetching periods...');
-    const response = await fetch(`${API_BASE_URL}/periods`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
-
-    const data = await handleResponse<Period[]>(response);
-    console.log('✅ Periods loaded:', data);
-    
-    if (Array.isArray(data) && data.length > 0) {
-      console.log('📅 Sample period data:', {
-        id: data[0].id,
-        name: data[0].name,
-        is_active: data[0].is_active,
-        typeof_is_active: typeof data[0].is_active,
-        start_date: data[0].start_date,
-        end_date: data[0].end_date,
-        due_date: data[0].due_date
-      });
-    }
-    
-    return Array.isArray(data) ? data.map(p => ({ ...p, is_active: p.is_active ?? true })) : [];
-  } catch (error) {
-    console.error('❌ Error fetching periods:', error);
-    throw error;
-  }
-};
-
-export const createPeriod = async (periodData: CreatePeriodDTO): Promise<Period> => {
-  try {
-    const payload = { ...periodData, is_active: periodData.is_active ?? true };
-    console.log('🔄 Creating period...', payload);
-    const response = await fetch(`${API_BASE_URL}/periods`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload)
-    });
-
-    const data = await handleResponse<Period>(response);
-    console.log('✅ Period created:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? true };
-  } catch (error) {
-    console.error('❌ Error creating period:', error);
-    throw error;
-  }
-};
-
-export const updatePeriod = async (id: number, periodData: Partial<CreatePeriodDTO>): Promise<Period> => {
-  try {
-    console.log('🔄 Updating period...', id, periodData);
-    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(periodData)
-    });
-
-    const data = await handleResponse<Period>(response);
-    console.log('✅ Period updated:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? true };
-  } catch (error) {
-    console.error('❌ Error updating period:', error);
-    throw error;
-  }
-};
-
-export const deactivatePeriod = async (id: number): Promise<Period> => {
-  try {
-    console.log('🔄 Deactivating period:', id);
-    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ is_active: false })
-    });
-
-    const data = await handleResponse<Period>(response);
-    console.log('✅ Period deactivated:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? false };
-  } catch (error) {
-    console.error('❌ Error deactivating period:', error);
-    throw error;
-  }
-};
-
-// ... other service functions (getCriteria, createCriteria, etc.) remain unchanged
+// ==================== CRITERIA ====================
 export const getCriteria = async (): Promise<Criteria[]> => {
   try {
     console.log('🔍 Fetching criteria...');
     const response = await fetch(`${API_BASE_URL}/criteria`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     const data = await handleResponse<Criteria[]>(response);
@@ -161,7 +75,7 @@ export const createCriteria = async (criteriaData: CreateCriteriaDTO): Promise<C
     const response = await fetch(`${API_BASE_URL}/criteria`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(criteriaData)
+      body: JSON.stringify(criteriaData),
     });
 
     const data = await handleResponse<Criteria>(response);
@@ -179,7 +93,7 @@ export const updateCriteria = async (id: number, criteriaData: CreateCriteriaDTO
     const response = await fetch(`${API_BASE_URL}/criteria/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(criteriaData)
+      body: JSON.stringify(criteriaData),
     });
 
     const data = await handleResponse<Criteria>(response);
@@ -196,7 +110,7 @@ export const deleteCriteria = async (id: number): Promise<void> => {
     console.log('🗑️ Deleting criteria:', id);
     const response = await fetch(`${API_BASE_URL}/criteria/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     await handleResponse<void>(response);
@@ -207,12 +121,99 @@ export const deleteCriteria = async (id: number): Promise<void> => {
   }
 };
 
+// ==================== PERIODS ====================
+export const getPeriods = async (): Promise<Period[]> => {
+  try {
+    console.log('🔍 Fetching periods...');
+    const response = await fetch(`${API_BASE_URL}/periods`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await handleResponse<Period[]>(response);
+    console.log('✅ Periods loaded:', data);
+    
+    if (Array.isArray(data) && data.length > 0) {
+      console.log('📅 Sample period data:', {
+        id: data[0].id,
+        name: data[0].name,
+        is_active: data[0].is_active,
+        typeof_is_active: typeof data[0].is_active,
+        start_date: data[0].start_date,
+        end_date: data[0].end_date,
+        due_date: data[0].due_date,
+      });
+    }
+    
+    return Array.isArray(data) ? data.map(p => ({ ...p, is_active: p.is_active ?? true })) : [];
+  } catch (error) {
+    console.error('❌ Error fetching periods:', error);
+    throw error;
+  }
+};
+
+export const createPeriod = async (periodData: CreatePeriodDTO): Promise<Period> => {
+  try {
+    const payload = { ...periodData, is_active: periodData.is_active ?? true };
+    console.log('🔄 Creating period...', payload);
+    const response = await fetch(`${API_BASE_URL}/periods`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period created:', data, 'is_active type:', typeof data.is_active);
+    return { ...data, is_active: data.is_active ?? true };
+  } catch (error) {
+    console.error('❌ Error creating period:', error);
+    throw error;
+  }
+};
+
+export const updatePeriod = async (id: number, periodData: Partial<CreatePeriodDTO>): Promise<Period> => {
+  try {
+    console.log('🔄 Updating period...', id, periodData);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(periodData),
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period updated:', data, 'is_active type:', typeof data.is_active);
+    return { ...data, is_active: data.is_active ?? true };
+  } catch (error) {
+    console.error('❌ Error updating period:', error);
+    throw error;
+  }
+};
+
+export const deactivatePeriod = async (id: number): Promise<Period> => {
+  try {
+    console.log('🔄 Deactivating period:', id);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ is_active: false }),
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period deactivated:', data, 'is_active type:', typeof data.is_active);
+    return { ...data, is_active: data.is_active ?? false };
+  } catch (error) {
+    console.error('❌ Error deactivating period:', error);
+    throw error;
+  }
+};
+
+// ==================== TEMPLATES ====================
 export const getTemplates = async (): Promise<Template[]> => {
   try {
     console.log('🔍 Fetching templates...');
     const response = await fetch(`${API_BASE_URL}/templates`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     const data = await handleResponse<Template[]>(response);
@@ -225,35 +226,76 @@ export const getTemplates = async (): Promise<Template[]> => {
 };
 
 export const createTemplate = async (templateData: CreateTemplateDTO): Promise<Template> => {
-  console.log('🔄 Creating template...', templateData);
+  try {
+    console.log('🔄 Creating template...', templateData);
 
-  const groupedCriteria = {
-    productivity: templateData.criteria
-      .filter(c => c.category === 'productivity')
-      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-    work_conduct: templateData.criteria
-      .filter(c => c.category === 'work_conduct')
-      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-    skills: templateData.criteria
-      .filter(c => c.category === 'skills')
-      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight }))
-  };
+    const groupedCriteria = {
+      productivity: templateData.criteria
+        .filter(c => c.category === 'productivity')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+      work_conduct: templateData.criteria
+        .filter(c => c.category === 'work_conduct')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+      skills: templateData.criteria
+        .filter(c => c.category === 'skills')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+    };
 
-  const backendPayload = {
-    name: templateData.name,
-    description: templateData.description,
-    criteria: groupedCriteria
-  };
+    const backendPayload = {
+      name: templateData.name,
+      description: templateData.description,
+      criteria: groupedCriteria,
+    };
 
-  const response = await fetch(`${API_BASE_URL}/templates`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(backendPayload)
-  });
+    const response = await fetch(`${API_BASE_URL}/templates`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(backendPayload),
+    });
 
-  const data = await handleResponse<Template>(response);
-  console.log('✅ Template created:', data);
-  return { ...data, is_active: data.is_active ?? true, description: data.description };
+    const data = await handleResponse<Template>(response);
+    console.log('✅ Template created:', data);
+    return { ...data, is_active: data.is_active ?? true, description: data.description };
+  } catch (error) {
+    console.error('❌ Error creating template:', error);
+    throw error;
+  }
+};
+
+export const updateTemplate = async (id: number, templateData: CreateTemplateDTO): Promise<Template> => {
+  try {
+    console.log('🔄 Updating template...', id, templateData);
+    const groupedCriteria = {
+      productivity: templateData.criteria
+        .filter(c => c.category === 'productivity')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+      work_conduct: templateData.criteria
+        .filter(c => c.category === 'work_conduct')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+      skills: templateData.criteria
+        .filter(c => c.category === 'skills')
+        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+    };
+
+    const backendPayload = {
+      name: templateData.name,
+      description: templateData.description,
+      criteria: groupedCriteria,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(backendPayload),
+    });
+
+    const data = await handleResponse<Template>(response);
+    console.log('✅ Template updated:', data);
+    return { ...data, is_active: data.is_active ?? true, description: data.description };
+  } catch (error) {
+    console.error('❌ Error updating template:', error);
+    throw error;
+  }
 };
 
 export const deleteTemplate = async (id: number): Promise<void> => {
@@ -261,7 +303,7 @@ export const deleteTemplate = async (id: number): Promise<void> => {
     console.log('🗑️ Deleting template:', id);
     const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     await handleResponse<void>(response);
@@ -280,7 +322,7 @@ export const cloneTemplate = async (id: number, newName?: string): Promise<Templ
     const response = await fetch(`${API_BASE_URL}/templates/${id}/clone`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body
+      body,
     });
 
     const data = await handleResponse<Template>(response);
@@ -292,12 +334,13 @@ export const cloneTemplate = async (id: number, newName?: string): Promise<Templ
   }
 };
 
+// ==================== EVALUATIONS ====================
 export const getEvaluations = async (): Promise<Evaluation[]> => {
   try {
     console.log('🔍 Fetching evaluations...');
     const response = await fetch(`${API_BASE_URL}/evaluations`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     const data = await handleResponse<Evaluation[]>(response);
@@ -317,13 +360,13 @@ export const createEvaluationsFromTemplate = async (
     
     const backendPayload = {
       template_id: evaluationsData.template_id,
-      user_ids: evaluationsData.employee_ids
+      user_ids: evaluationsData.employee_ids,
     };
     
     const response = await fetch(`${API_BASE_URL}/evaluations/from-template`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(backendPayload)
+      body: JSON.stringify(backendPayload),
     });
 
     const data = await handleResponse<{ evaluatedEmployeeIds: number[]; count: number }>(response);
@@ -340,7 +383,7 @@ export const deleteEvaluation = async (id: number): Promise<void> => {
     console.log('🗑️ Deleting evaluation:', id);
     const response = await fetch(`${API_BASE_URL}/evaluations/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     await handleResponse<void>(response);
@@ -351,12 +394,13 @@ export const deleteEvaluation = async (id: number): Promise<void> => {
   }
 };
 
+// ==================== EMPLOYEES ====================
 export const getEmployees = async (): Promise<Employee[]> => {
   try {
     console.log('🔍 Fetching employees...');
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     const data = await handleResponse<Employee[]>(response);
@@ -373,7 +417,7 @@ export const getMyEvaluations = async (): Promise<Evaluation[]> => {
     console.log('🔍 Fetching my evaluations...');
     const response = await fetch(`${API_BASE_URL}/me/evaluations`, {
       method: 'GET',
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     const data = await handleResponse<Evaluation[]>(response);

@@ -27,6 +27,7 @@ interface ConfigurationPanelProps {
   onDeletePeriod: (period: Period) => void;
   onEditCriteria: (criteria: Criteria) => void;
   onDeleteCriteria: (criteria: Criteria) => void;
+  onEditTemplate: (template: Template) => void;
   onViewTemplate: (template: Template) => void;
   onCloneTemplate: (template: Template) => void;
   onGenerateEval: (template: Template) => void;
@@ -55,6 +56,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   onDeletePeriod,
   onEditCriteria,
   onDeleteCriteria,
+  onEditTemplate,
   onViewTemplate,
   onCloneTemplate,
   onGenerateEval,
@@ -98,6 +100,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             deletingItems={deletingItems}
             cloningItems={cloningItems}
             onView={onViewTemplate}
+            onEdit={onEditTemplate}
             onClone={onCloneTemplate}
             onGenerateEval={onGenerateEval}
             onDelete={onDeleteTemplate}

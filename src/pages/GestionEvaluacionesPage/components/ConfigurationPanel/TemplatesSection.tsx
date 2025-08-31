@@ -1,6 +1,6 @@
 import React from 'react';
-import { Eye, Copy, Play, Trash2 } from 'lucide-react';
-import type { Template } from '../../../../types/evaluation';
+import { FileText, Eye, Copy, Trash2, Edit } from 'lucide-react';
+import type { Template } from '../../types/index';
 
 interface TemplatesSectionProps {
   templates: Template[];
@@ -11,6 +11,7 @@ interface TemplatesSectionProps {
   onClone: (template: Template) => void;
   onGenerateEval: (template: Template) => void;
   onDelete: (template: Template) => void;
+  onEdit: (template: Template) => void;
 }
 
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({
@@ -22,6 +23,7 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   onClone,
   onGenerateEval,
   onDelete,
+  onEdit,
 }) => {
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -41,38 +43,68 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
               className="bg-gray-50 rounded-lg p-4 flex justify-between items-center"
             >
               <div>
-                <h4 className="font-semibold">{template.name}</h4>
-                <p className="text-sm text-gray-600">{template.description || 'Sin descripción'}</p>
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-purple-500" />
+                  {template.name}
+                  <span
+                    className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                      template.is_active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {template.is_active ? 'Activa' : 'Inactiva'}
+                  </span>
+                </h4>
+                {template.description && (
+                  <p className="text-sm text-gray-600">{template.description}</p>
+                )}
                 <p className="text-sm text-gray-600">
-                  Estado: {template.is_active ? 'Activa' : 'Inactiva'}
+                  Criterios: {template.criteria.length}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Pesos: {template.criteria.map(c => `${c.weight * 100}% (${c.category})`).join(', ')}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => onView(template)}
                   className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Ver plantilla"
                 >
                   <Eye className="w-4 h-4 text-blue-500" />
+                </button>
+                <button
+                  onClick={() => onEdit(template)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Editar plantilla"
+                >
+                  <Edit className="w-4 h-4 text-blue-500" />
                 </button>
                 <button
                   onClick={() => onClone(template)}
                   disabled={isCloning}
                   className="p-2 hover:bg-gray-100 rounded-lg"
+                  title="Clonar plantilla"
                 >
                   <Copy className={`w-4 h-4 ${isCloning ? 'text-gray-400' : 'text-green-500'}`} />
                 </button>
                 <button
                   onClick={() => onGenerateEval(template)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-blue-50 rounded-lg"
+                  title="Generar evaluación"
                 >
-                  <Play className="w-4 h-4 text-purple-500" />
+                  <FileText className="w-4 h-4 text-purple-500" />
                 </button>
                 <button
                   onClick={() => onDelete(template)}
                   disabled={isDeleting}
                   className="p-2 hover:bg-red-50 rounded-lg"
+                  title="Eliminar plantilla"
                 >
-                  <Trash2 className={`w-4 h-4 ${isDeleting ? 'text-gray-400' : 'text-red-500'}`} />
+                  <Trash2
+                    className={`w-4 h-4 ${isDeleting ? 'text-gray-400' : 'text-red-500'}`}
+                  />
                 </button>
               </div>
             </div>

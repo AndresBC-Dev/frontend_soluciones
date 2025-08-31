@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit, Trash2 } from 'lucide-react';
-import type { Criteria } from '../../../../types/evaluation';
+import type { Criteria } from '../../../types/evaluation';
 
 interface CriteriaSectionProps {
   criteria: Criteria[];

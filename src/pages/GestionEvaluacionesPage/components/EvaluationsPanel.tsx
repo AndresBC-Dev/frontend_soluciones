@@ -1,6 +1,6 @@
 import React from 'react';
 import { Activity, Plus, Trash2, RefreshCw } from 'lucide-react';
-import type { Evaluation } from '../types';
+import type { Evaluation } from '../../../types/evaluation';
 
 interface EvaluationsPanelProps {
   evaluations: Evaluation[];

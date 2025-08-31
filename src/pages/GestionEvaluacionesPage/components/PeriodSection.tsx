@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit, Trash2 } from 'lucide-react';
-import type { Period } from '../../../../types/evaluation';
+import type { Period } from '../../../types/evaluation';
 
 interface PeriodsSectionProps {
   periods: Period[];

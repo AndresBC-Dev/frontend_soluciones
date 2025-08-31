@@ -1,6 +1,3 @@
-// src/services/evaluationService.ts
-// Servicio corregido con manejo de respuestas y tipos correctos
-
 import { API_BASE_URL } from '../constants/api';
 
 // Re-exportar tipos para compatibilidad
@@ -37,7 +34,7 @@ const getAuthHeaders = () => {
   };
 };
 
-// ✅ Helper para manejar respuestas del backend
+// Helper para manejar respuestas del backend
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorText = await response.text();
@@ -65,7 +62,7 @@ export const getCriteria = async (): Promise<Criteria[]> => {
 
     const data = await handleResponse<Criteria[]>(response);
     console.log('✅ Criteria loaded:', data);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data.map(c => ({ ...c, is_active: c.is_active ?? true })) : [];
   } catch (error) {
     console.error('❌ Error fetching criteria:', error);
     throw error;
@@ -83,9 +80,27 @@ export const createCriteria = async (criteriaData: CreateCriteriaDTO): Promise<C
 
     const data = await handleResponse<Criteria>(response);
     console.log('✅ Criteria created:', data);
-    return data;
+    return { ...data, is_active: data.is_active ?? true };
   } catch (error) {
     console.error('❌ Error creating criteria:', error);
+    throw error;
+  }
+};
+
+export const updateCriteria = async (id: number, criteriaData: CreateCriteriaDTO): Promise<Criteria> => {
+  try {
+    console.log('🔄 Updating criteria...', id, criteriaData);
+    const response = await fetch(`${API_BASE_URL}/criteria/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(criteriaData)
+    });
+
+    const data = await handleResponse<Criteria>(response);
+    console.log('✅ Criteria updated:', data);
+    return { ...data, is_active: data.is_active ?? true };
+  } catch (error) {
+    console.error('❌ Error updating criteria:', error);
     throw error;
   }
 };
@@ -118,7 +133,6 @@ export const getPeriods = async (): Promise<Period[]> => {
     const data = await handleResponse<Period[]>(response);
     console.log('✅ Periods loaded:', data);
     
-    // ✅ Debug: Ver estructura de fechas
     if (Array.isArray(data) && data.length > 0) {
       console.log('📅 Sample period dates:', {
         start_date: data[0].start_date,
@@ -216,7 +230,7 @@ export const getTemplates = async (): Promise<Template[]> => {
 
     const data = await handleResponse<Template[]>(response);
     console.log('✅ Templates loaded:', data);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data.map(t => ({ ...t, is_active: t.is_active ?? true, description: t.description })) : [];
   } catch (error) {
     console.error('❌ Error fetching templates:', error);
     throw error;
@@ -224,21 +238,36 @@ export const getTemplates = async (): Promise<Template[]> => {
 };
 
 export const createTemplate = async (templateData: CreateTemplateDTO): Promise<Template> => {
-  try {
-    console.log('🔄 Creating template...', templateData);
-    const response = await fetch(`${API_BASE_URL}/templates`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(templateData)
-    });
+  console.log('🔄 Creating template...', templateData);
 
-    const data = await handleResponse<Template>(response);
-    console.log('✅ Template created:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ Error creating template:', error);
-    throw error;
-  }
+  // Reorganizar criterios por categoría para el backend
+  const groupedCriteria = {
+    productivity: templateData.criteria
+      .filter(c => c.category === 'productivity')
+      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+    work_conduct: templateData.criteria
+      .filter(c => c.category === 'work_conduct')
+      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
+    skills: templateData.criteria
+      .filter(c => c.category === 'skills')
+      .map(c => ({ criteria_id: c.criteriaId, weight: c.weight }))
+  };
+
+  const backendPayload = {
+    name: templateData.name,
+    description: templateData.description, // description is optional
+    criteria: groupedCriteria
+  };
+
+  const response = await fetch(`${API_BASE_URL}/templates`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(backendPayload)
+  });
+
+  const data = await handleResponse<Template>(response);
+  console.log('✅ Template created:', data);
+  return { ...data, is_active: data.is_active ?? true, description: data.description };
 };
 
 export const deleteTemplate = async (id: number): Promise<void> => {
@@ -270,7 +299,7 @@ export const cloneTemplate = async (id: number, newName?: string): Promise<Templ
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template cloned:', data);
-    return data;
+    return { ...data, is_active: data.is_active ?? true, description: data.description };
   } catch (error) {
     console.error('❌ Error cloning template:', error);
     throw error;
@@ -288,7 +317,7 @@ export const getEvaluations = async (): Promise<Evaluation[]> => {
 
     const data = await handleResponse<Evaluation[]>(response);
     console.log('✅ Evaluations loaded:', data);
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data.map(e => ({ ...e, evaluator_name: e.evaluator_name ?? 'Unknown' })) : [];
   } catch (error) {
     console.error('❌ Error fetching evaluations:', error);
     throw error;
@@ -301,10 +330,9 @@ export const createEvaluationsFromTemplate = async (
   try {
     console.log('🔄 Creating evaluations from template...', evaluationsData);
     
-    // ⚠️ IMPORTANTE: El backend espera 'user_ids', no 'employee_ids'
     const backendPayload = {
       template_id: evaluationsData.template_id,
-      user_ids: evaluationsData.employee_ids // ✅ Mapear employee_ids -> user_ids
+      user_ids: evaluationsData.employee_ids
     };
     
     const response = await fetch(`${API_BASE_URL}/evaluations/from-template`, {
@@ -358,15 +386,17 @@ export const getEmployees = async (): Promise<Employee[]> => {
 
 export const getMyEvaluations = async (): Promise<Evaluation[]> => {
   try {
+    console.log('🔍 Fetching my evaluations...');
     const response = await fetch(`${API_BASE_URL}/me/evaluations`, {
       method: 'GET',
       headers: getAuthHeaders()
     });
 
     const data = await handleResponse<Evaluation[]>(response);
-    return Array.isArray(data) ? data : [];
+    console.log('✅ My evaluations loaded:', data);
+    return Array.isArray(data) ? data.map(e => ({ ...e, evaluator_name: e.evaluator_name ?? 'Unknown' })) : [];
   } catch (error) {
-    console.error('Error fetching my evaluations:', error);
+    console.error('❌ Error fetching my evaluations:', error);
     throw error;
   }
 };

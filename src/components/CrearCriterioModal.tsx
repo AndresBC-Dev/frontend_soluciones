@@ -21,31 +21,27 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     name: '',
     description: '',
     weight: '',
-    category: '',
+    category: '' as Category | '',
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Categorías predefinidas comunes
-  const commonCategories = [
-    'Comunicación',
-    'Creatividad', 
-    'Liderazgo',
-    'Trabajo en Equipo',
-    'Productividad',
-    'Puntualidad',
-    'Calidad del Trabajo',
-    'Iniciativa',
-    'Resolución de Problemas',
-    'Adaptabilidad'
+
+
+  type Category = 'productividad' | 'conducta_laboral' | 'habilidades';
+  const commonCategories: Category[] = [
+    'productividad',
+    'conducta_laboral',
+    'habilidades'
   ];
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
-    
+
     // Limpiar error cuando el usuario empiece a escribir
     if (error) setError(null);
   };
@@ -55,18 +51,22 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     if (!form.description.trim()) return 'La descripción es obligatoria.';
     if (!form.weight.trim()) return 'El peso es obligatorio.';
     if (!form.category.trim()) return 'La categoría es obligatoria.';
-    
+
+    if (!commonCategories.includes(form.category as Category)) {
+      return 'La categoría debe ser productividad, conducta_laboral o habilidades.';
+    }
+
     const weightNum = parseFloat(form.weight);
     if (isNaN(weightNum) || weightNum <= 0 || weightNum > 1) {
       return 'El peso debe ser un número entre 0.01 y 1.0';
     }
-    
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -82,14 +82,14 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: form.category.trim()
+        category: form.category as Category
       };
 
       const newCriteria = await createCriteria(criteriaData);
 
       // Mostrar éxito
       setShowSuccess(true);
-      
+
       // Esperar un momento para que el usuario vea el mensaje
       setTimeout(() => {
         onCreated(newCriteria);
@@ -106,7 +106,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
 
   const handleClose = () => {
     if (loading) return;
-    
+
     setForm({
       name: '',
       description: '',
@@ -123,7 +123,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
-        
+
         {/* Success State */}
         {showSuccess ? (
           <div className="text-center py-8">
@@ -141,8 +141,8 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                 <Target className="w-6 h-6 text-green-500" />
                 Crear Nuevo Criterio
               </h3>
-              <button 
-                onClick={handleClose} 
+              <button
+                onClick={handleClose}
                 disabled={loading}
                 className="text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
@@ -152,7 +152,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              
+
               {/* Nombre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,20 +225,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                     {commonCategories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
-                    <option value="__custom">+ Categoría personalizada</option>
                   </select>
-                  
-                  {form.category === '__custom' && (
-                    <input
-                      name="category"
-                      value=""
-                      onChange={handleChange}
-                      type="text"
-                      placeholder="Escribe una nueva categoría"
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                      disabled={loading}
-                    />
-                  )}
                 </div>
               </div>
 
@@ -287,9 +274,9 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                     </>
                   )}
                 </button>
-                <button 
+                <button
                   type="button"
-                  onClick={handleClose} 
+                  onClick={handleClose}
                   disabled={loading}
                   className="flex-1 bg-gray-100 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50"
                 >

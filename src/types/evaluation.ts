@@ -11,15 +11,19 @@ export interface Criteria {
 }
 
 export interface Period {
-  id: number; // ✅ Cambiado de string a number
+  id: number;
   name: string;
   description: string;
-  start_date: string; // ✅ ISO date string del backend
-  end_date: string;   // ✅ ISO date string del backend
-  due_date: string;   // ✅ ISO date string del backend
-  is_active: boolean; // ✅ snake_case como el backend
-  created_at: string; // ✅ Agregado
-  updated_at: string; // ✅ Agregado
+  start_date: string;  // ✅ RFC3339 format from backend
+  end_date: string;    // ✅ RFC3339 format from backend
+  due_date: string;    // ✅ RFC3339 format from backend
+  status?: 'draft' | 'active' | 'expired' | 'completed';
+  is_active: boolean;
+  is_expired?: boolean;
+  can_modify?: boolean;
+  can_delete?: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Template {
@@ -70,9 +74,9 @@ export interface CreateCriteriaDTO {
 export interface CreatePeriodDTO {
   name: string;
   description: string;
-  start_date: string; // ✅ Formato YYYY-MM-DD para enviar al backend
-  end_date: string;
-  due_date: string;
+  start_date: string; // ✅ RFC3339 format: "2025-08-31T00:00:00Z"
+  end_date: string;   // ✅ RFC3339 format: "2025-08-31T00:00:00Z"
+  due_date: string;   // ✅ RFC3339 format: "2025-08-31T00:00:00Z"
   is_active: boolean;
 }
 

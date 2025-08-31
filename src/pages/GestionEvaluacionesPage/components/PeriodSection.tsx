@@ -35,7 +35,6 @@ const PeriodsSection: React.FC<PeriodsSectionProps> = ({
             >
               <div>
                 <h4 className="font-semibold">{period.name}</h4>
-                <p className="text-sm text-gray-600">{period.description}</p>
                 <p className="text-sm text-gray-600">
                   {period.start_date} - {period.end_date}
                 </p>

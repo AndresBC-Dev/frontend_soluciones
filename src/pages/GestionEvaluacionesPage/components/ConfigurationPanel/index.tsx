@@ -1,4 +1,4 @@
-import  type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Plus, Search, Clock, Target, FileText } from 'lucide-react';
 import type { Period, Criteria, Template } from '../../../../types/evaluation';
 import CriteriaSection from './CriteriaSection';
@@ -96,6 +96,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         return (
           <TemplatesSection
             templates={templates}
+            criteria={criteria} // Add criteria prop
             searchTerm={searchTerm}
             deletingItems={deletingItems}
             cloningItems={cloningItems}

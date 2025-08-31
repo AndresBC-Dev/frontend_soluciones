@@ -1,12 +1,12 @@
 import React from 'react';
 import { Edit, Trash2 } from 'lucide-react';
 import { formatDateFromBackend } from '../../../../utils/dateHelpers';
-import type { Period } from '../../../../types/evaluation';
+import type { Period } from '../../../../types/evaluation'; 
 
 interface PeriodsSectionProps {
   periods: Period[];
   searchTerm: string;
-  showInactivePeriods: boolean; // Add new prop
+  showInactivePeriods: boolean;
   deletingItems: Set<number>;
   onEdit: (period: Period) => void;
   onDelete: (period: Period) => void;
@@ -21,7 +21,7 @@ const PeriodsSection: React.FC<PeriodsSectionProps> = ({
   onDelete,
 }) => {
   const filteredPeriods = periods
-    .filter(p => (showInactivePeriods ? true : p.is_active)) // Respect showInactivePeriods
+    .filter(p => (showInactivePeriods ? true : p.is_active))
     .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (

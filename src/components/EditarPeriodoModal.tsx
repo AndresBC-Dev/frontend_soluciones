@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, X, Loader2, Save } from 'lucide-react';
 import { updatePeriod } from '../services/evaluationService';
 import { formatDateForBackend, formatDateFromBackend } from '../utils/dateHelpers';
-import type { Period } from '../types/evaluation';
+import type { Period } from '../../src/pages/GestionEvaluacionesPage/types/index';
 
 interface EditarPeriodoModalProps {
     show: boolean;
@@ -103,7 +103,7 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
             };
 
             const updatedPeriod = await updatePeriod(period.id, updateData);
-            onUpdated(updatedPeriod);
+            onUpdated(updatePeriod);
             handleClose();
         } catch (err: any) {
             setError(err.message || 'Error al actualizar el período');

@@ -11,7 +11,7 @@ export type {
   CreatePeriodDTO,
   CreateTemplateDTO,
   CreateEvaluationsFromTemplateDTO,
-} from '../types/evaluation';
+} from '../../src/types/evaluation';
 
 import type {
   Criteria,
@@ -374,6 +374,32 @@ export const createEvaluationsFromTemplate = async (
     return data;
   } catch (error) {
     console.error('❌ Error creating evaluations:', error);
+    throw error;
+  }
+};
+
+export const submitEvaluationScores = async (
+  evaluationId: number,
+  payload: { scores: { criteria_id: number; score: number }[]; status: string }
+): Promise<Evaluation> => {
+  try {
+    console.log('🔄 Submitting evaluation scores...', evaluationId, payload);
+    const backendPayload = {
+      scores: payload.scores.map(s => ({ criteria_id: s.criteria_id, score: s.score })),
+      status: payload.status,
+    };
+
+    const response = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}/scores`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(backendPayload),
+    });
+
+    const data = await handleResponse<Evaluation>(response);
+    console.log('✅ Evaluation scores submitted:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error submitting evaluation scores:', error);
     throw error;
   }
 };

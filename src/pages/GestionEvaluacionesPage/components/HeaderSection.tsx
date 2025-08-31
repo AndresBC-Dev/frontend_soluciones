@@ -12,7 +12,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import StatCard from './StatCard';
-import type { Stats } from '../types';
+import type { Stats } from '../../../types/evaluation';
 
 interface HeaderSectionProps {
   stats: Stats;

@@ -1,9 +1,10 @@
 import React from 'react';
 import { FileText, Eye, Copy, Trash2, Edit } from 'lucide-react';
-import type { Template } from '../../types/index';
+import type { Template, Criteria } from '../../../../types/evaluation';
 
 interface TemplatesSectionProps {
   templates: Template[];
+  criteria: Criteria[];
   searchTerm: string;
   deletingItems: Set<number>;
   cloningItems: Set<number>;
@@ -16,6 +17,7 @@ interface TemplatesSectionProps {
 
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   templates,
+  criteria,
   searchTerm,
   deletingItems,
   cloningItems,
@@ -37,6 +39,11 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
         filteredTemplates.map(template => {
           const isDeleting = deletingItems.has(template.id);
           const isCloning = cloningItems.has(template.id);
+          // Map criteria.criteriaId to Criteria objects
+          const templateCriteria = template.criteria
+            .map(criterion => criteria.find(c => c.id === criterion.criteriaId))
+            .filter((c): c is Criteria => c !== undefined);
+
           return (
             <div
               key={template.id}
@@ -60,10 +67,10 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                   <p className="text-sm text-gray-600">{template.description}</p>
                 )}
                 <p className="text-sm text-gray-600">
-                  Criterios: {template.criteria.length}
+                  Criterios: {templateCriteria.length}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Pesos: {template.criteria.map(c => `${c.weight * 100}% (${c.category})`).join(', ')}
+                  Pesos: {templateCriteria.map(c => `${c.weight * 100}% (${c.category})`).join(', ')}
                 </p>
               </div>
               <div className="flex gap-2">

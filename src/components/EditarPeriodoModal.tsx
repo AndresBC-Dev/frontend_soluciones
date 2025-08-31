@@ -29,7 +29,6 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // ✅ FIX: Reflejar estado real del período
     useEffect(() => {
         if (period) {
             setForm({
@@ -38,27 +37,57 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
                 startDate: formatDateFromBackend(period.start_date),
                 endDate: formatDateFromBackend(period.end_date),
                 dueDate: formatDateFromBackend(period.due_date),
-                isActive: period.is_active === true,
+                isActive: period.is_active,
             });
         }
     }, [period]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-
         if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
             setForm(prev => ({ ...prev, [name]: checked }));
         } else {
             setForm(prev => ({ ...prev, [name]: value }));
         }
-
         if (error) setError(null);
+    };
+
+    const validateForm = (): string | null => {
+        if (!form.name.trim()) return 'El nombre del período es obligatorio.';
+        if (!form.description.trim()) return 'La descripción es obligatoria.';
+        if (!form.startDate) return 'La fecha de inicio es obligatoria.';
+        if (!form.endDate) return 'La fecha de fin es obligatoria.';
+        if (!form.dueDate) return 'La fecha límite es obligatoria.';
+
+        const startDate = new Date(form.startDate);
+        const endDate = new Date(form.endDate);
+        const dueDate = new Date(form.dueDate);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || isNaN(dueDate.getTime())) {
+            return 'Las fechas deben ser válidas.';
+        }
+
+        if (endDate <= startDate) {
+            return 'La fecha de fin debe ser posterior a la fecha de inicio.';
+        }
+
+        if (dueDate < startDate) {
+            return 'La fecha límite no puede ser anterior a la fecha de inicio.';
+        }
+
+        return null;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!period) return;
+
+        const validationError = validateForm();
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -70,7 +99,7 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
                 start_date: formatDateForBackend(form.startDate),
                 end_date: formatDateForBackend(form.endDate),
                 due_date: formatDateForBackend(form.dueDate),
-                is_active: form.isActive
+                is_active: form.isActive,
             };
 
             const updatedPeriod = await updatePeriod(period.id, updateData);
@@ -85,6 +114,14 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
 
     const handleClose = () => {
         if (loading) return;
+        setForm({
+            name: '',
+            description: '',
+            startDate: '',
+            endDate: '',
+            dueDate: '',
+            isActive: true,
+        });
         setError(null);
         onClose();
     };

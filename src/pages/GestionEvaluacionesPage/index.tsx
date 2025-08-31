@@ -34,7 +34,7 @@ import {
   getTemplates,
   getEvaluations,
   deleteCriteria,
-  deletePeriod,
+  deactivatePeriod,
   deleteTemplate,
   deleteEvaluation,
   cloneTemplate,
@@ -65,6 +65,7 @@ const GestionEvaluacionesPage: React.FC = () => {
   // Estados de filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'todos' | string>('todos');
+  const [showInactivePeriods, setShowInactivePeriods] = useState(false);
 
   // Estados de carga individual
   const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
@@ -107,7 +108,6 @@ const GestionEvaluacionesPage: React.FC = () => {
       ]);
 
       const sortedPeriods = periodsData.sort((a, b) => {
-        // Defensive sorting in case created_at is undefined (though now required)
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return dateB - dateA;
@@ -117,6 +117,7 @@ const GestionEvaluacionesPage: React.FC = () => {
       setCriteria(criteriaData);
       setTemplates(templatesData);
       setEvaluations(evaluationsData);
+      console.log('📊 Periods state updated:', sortedPeriods);
     } catch (err) {
       console.error('Error loading data:', err);
       setError('Error al cargar los datos. Por favor, intente nuevamente.');
@@ -177,9 +178,34 @@ const GestionEvaluacionesPage: React.FC = () => {
   };
 
   const handlePeriodUpdated = (updatedPeriod: Period) => {
-    setPeriods(prev => prev.map(p => p.id === updatedPeriod.id ? updatedPeriod : p));
+    setPeriods(prev => {
+      const newPeriods = prev.map(p => p.id === updatedPeriod.id ? updatedPeriod : p);
+      console.log('📊 Periods state after update:', newPeriods);
+      return newPeriods;
+    });
     setShowEditarPeriodoModal(false);
     setPeriodToEdit(null);
+    showConfirmation(
+      'Período Actualizado',
+      `El período "${updatedPeriod.name}" ha sido actualizado exitosamente.`,
+      () => hideConfirmation(),
+      'success'
+    );
+  };
+
+  const handlePeriodCreated = (period: Period) => {
+    setPeriods(prev => {
+      const newPeriods = [...prev, period];
+      console.log('📊 Periods state after creation:', newPeriods);
+      return newPeriods;
+    });
+    setShowCrearPeriodoModal(false);
+    showConfirmation(
+      'Período Creado',
+      `El período "${period.name}" ha sido creado exitosamente.`,
+      () => hideConfirmation(),
+      'success'
+    );
   };
 
   const handleDeletePeriod = (period: Period) => {
@@ -206,8 +232,12 @@ const GestionEvaluacionesPage: React.FC = () => {
         setDeletingItems(prev => new Set(prev).add(period.id));
 
         try {
-          await deletePeriod(period.id);
-          setPeriods(prev => prev.filter(p => p.id !== period.id));
+          const updatedPeriod = await deactivatePeriod(period.id);
+          setPeriods(prev => {
+            const newPeriods = prev.map(p => p.id === period.id ? updatedPeriod : p);
+            console.log('📊 Periods state after deactivate:', newPeriods);
+            return newPeriods;
+          });
           hideConfirmation();
           showConfirmation(
             'Período Desactivado',
@@ -394,17 +424,6 @@ const GestionEvaluacionesPage: React.FC = () => {
   };
 
   // Handlers de creación exitosa
-  const handlePeriodCreated = (period: Period) => {
-    setPeriods(prev => [...prev, period]);
-    setShowCrearPeriodoModal(false);
-    showConfirmation(
-      'Período Creado',
-      `El período "${period.name}" ha sido creado exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
   const handleCriteriaCreated = (criteria: Criteria) => {
     setCriteria(prev => [...prev, criteria]);
     setShowCrearCriterioModal(false);
@@ -486,6 +505,8 @@ const GestionEvaluacionesPage: React.FC = () => {
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             categories={categories}
+            showInactivePeriods={showInactivePeriods}
+            setShowInactivePeriods={setShowInactivePeriods}
             periods={periods}
             criteria={criteria}
             templates={templates}

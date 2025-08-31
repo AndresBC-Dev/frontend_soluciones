@@ -13,6 +13,8 @@ interface ConfigurationPanelProps {
   selectedCategory: string;
   setSelectedCategory: Dispatch<SetStateAction<string>>;
   categories: string[];
+  showInactivePeriods: boolean;
+  setShowInactivePeriods: Dispatch<SetStateAction<boolean>>;
   periods: Period[];
   criteria: Criteria[];
   templates: Template[];
@@ -39,6 +41,8 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   selectedCategory,
   setSelectedCategory,
   categories,
+  showInactivePeriods,
+  setShowInactivePeriods,
   periods,
   criteria,
   templates,
@@ -69,6 +73,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
           <PeriodsSection
             periods={periods}
             searchTerm={searchTerm}
+            showInactivePeriods={showInactivePeriods}
             deletingItems={deletingItems}
             onEdit={onEditPeriod}
             onDelete={onDeletePeriod}
@@ -149,7 +154,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         />
       </div>
 
-      {/* Filtro de categorías - Solo para criterios */}
+      {/* Filtros específicos por pestaña */}
       {activeTab === 'criterios' && (
         <div className="mb-4">
           <select
@@ -158,12 +163,26 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="todos">Todas las categorías</option>
-            {categories.map(category => (
+            {categories.filter(cat => cat !== 'todos').map(category => (
               <option key={category} value={category}>
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {activeTab === 'periodos' && (
+        <div className="mb-4">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={showInactivePeriods}
+              onChange={(e) => setShowInactivePeriods(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Mostrar períodos inactivos
+          </label>
         </div>
       )}
 

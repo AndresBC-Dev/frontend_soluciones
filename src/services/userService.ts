@@ -1,5 +1,5 @@
 import { API_BASE_URL } from '../constants/api';
-import type { User, UserCreateDTO, UserUpdateDTO, UserResponse } from '../types/user';
+import type { User, UserCreateDTO, UserUpdateDTO} from '../types/user';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token');

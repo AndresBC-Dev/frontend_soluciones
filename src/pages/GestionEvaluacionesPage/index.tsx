@@ -3,7 +3,7 @@ import { RefreshCw, AlertCircle } from 'lucide-react';
 
 // Componentes internos
 import HeaderSection from './components/HeaderSection';
-import ConfigurationPanel from './components/ConfigurationPanel'; // Ensure this import is correct
+import ConfigurationPanel from './components/ConfigurationPanel';
 import EvaluationsPanel from './components/EvaluationsPanel';
 
 // Tipos

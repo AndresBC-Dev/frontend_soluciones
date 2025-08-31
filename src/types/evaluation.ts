@@ -16,6 +16,7 @@ export interface Period {
   start_date: string;
   end_date: string;
   due_date: string;
+  status?: 'draft' | 'active' | 'closed' | 'archived';
   is_active: boolean;
   created_at?: string;
   updated_at: string;

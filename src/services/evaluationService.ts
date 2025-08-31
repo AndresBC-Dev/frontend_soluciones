@@ -138,6 +138,7 @@ export const getPeriods = async (): Promise<Period[]> => {
         id: data[0].id,
         name: data[0].name,
         is_active: data[0].is_active,
+        status: data[0].status,
         typeof_is_active: typeof data[0].is_active,
         start_date: data[0].start_date,
         end_date: data[0].end_date,
@@ -145,26 +146,34 @@ export const getPeriods = async (): Promise<Period[]> => {
       });
     }
     
-    return Array.isArray(data) ? data.map(p => ({ ...p, is_active: p.is_active ?? true })) : [];
+    // Normalizar is_active basado en status si no viene definido
+    return Array.isArray(data) ? data.map(p => ({
+      ...p,
+      is_active: p.is_active ?? (p.status === 'active')
+    })) : [];
   } catch (error) {
     console.error('❌ Error fetching periods:', error);
     throw error;
   }
 };
 
-export const createPeriod = async (periodData: CreatePeriodDTO): Promise<Period> => {
+export const createPeriod = async (periodData: Omit<CreatePeriodDTO, 'is_active'>): Promise<Period> => {
   try {
-    const payload = { ...periodData, is_active: periodData.is_active ?? true };
-    console.log('🔄 Creating period...', payload);
+    console.log('🔄 Creating period...', periodData);
     const response = await fetch(`${API_BASE_URL}/periods`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
+      body: JSON.stringify(periodData),
     });
 
     const data = await handleResponse<Period>(response);
-    console.log('✅ Period created:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? true };
+    console.log('✅ Period created:', data, 'status:', data.status, 'is_active:', data.is_active);
+    
+    // Normalizar is_active basado en status
+    return {
+      ...data,
+      is_active: data.is_active ?? (data.status === 'active')
+    };
   } catch (error) {
     console.error('❌ Error creating period:', error);
     throw error;
@@ -181,8 +190,12 @@ export const updatePeriod = async (id: number, periodData: Partial<CreatePeriodD
     });
 
     const data = await handleResponse<Period>(response);
-    console.log('✅ Period updated:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? true };
+    console.log('✅ Period updated:', data, 'status:', data.status, 'is_active:', data.is_active);
+    
+    return {
+      ...data,
+      is_active: data.is_active ?? (data.status === 'active')
+    };
   } catch (error) {
     console.error('❌ Error updating period:', error);
     throw error;
@@ -192,17 +205,42 @@ export const updatePeriod = async (id: number, periodData: Partial<CreatePeriodD
 export const deactivatePeriod = async (id: number): Promise<Period> => {
   try {
     console.log('🔄 Deactivating period:', id);
-    const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
-      method: 'PUT',
+    const response = await fetch(`${API_BASE_URL}/periods/${id}/close`, {
+      method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ is_active: false }),
     });
 
     const data = await handleResponse<Period>(response);
-    console.log('✅ Period deactivated:', data, 'is_active type:', typeof data.is_active);
-    return { ...data, is_active: data.is_active ?? false };
+    console.log('✅ Period deactivated:', data, 'status:', data.status, 'is_active:', data.is_active);
+    
+    return {
+      ...data,
+      is_active: data.is_active ?? (data.status === 'active')
+    };
   } catch (error) {
     console.error('❌ Error deactivating period:', error);
+    throw error;
+  }
+};
+
+// Nueva función para activar período
+export const activatePeriod = async (id: number): Promise<Period> => {
+  try {
+    console.log('🔄 Activating period:', id);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}/activate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await handleResponse<Period>(response);
+    console.log('✅ Period activated:', data, 'status:', data.status, 'is_active:', data.is_active);
+    
+    return {
+      ...data,
+      is_active: data.is_active ?? (data.status === 'active')
+    };
+  } catch (error) {
+    console.error('❌ Error activating period:', error);
     throw error;
   }
 };

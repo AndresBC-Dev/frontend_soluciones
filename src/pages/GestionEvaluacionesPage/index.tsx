@@ -15,7 +15,8 @@ import {
     getPeriods,
     getTemplates,
     getEvaluations,
-    deleteCriteria,
+    deactivateCriteria,  // CAMBIAR de deleteCriteria a deactivateCriteria
+    reactivateCriteria,  // AGREGAR esta importación
     deactivatePeriod,
     deleteTemplate,
     deleteEvaluation,
@@ -195,26 +196,26 @@ const GestionEvaluacionesPage: React.FC = () => {
     const handlePeriodUpdated = (updatedPeriod: Period) => {
         const wasActive = periods.find(p => p.id === updatedPeriod.id)?.is_active;
         const isNowActive = updatedPeriod.is_active;
-        
+
         setPeriods(prev => {
-            const newPeriods = prev.map(p => 
+            const newPeriods = prev.map(p =>
                 p.id === updatedPeriod.id ? updatedPeriod : p
             );
             console.log('✅ Period updated in state:', updatedPeriod);
             return newPeriods;
         });
-        
+
         // Si el período cambió de activo a inactivo o viceversa
         if (wasActive !== isNowActive) {
             // Mostrar períodos inactivos si se desactivó
             if (!isNowActive) {
                 setShowInactivePeriods(true);
             }
-            
-            const statusMessage = isNowActive 
-                ? 'activado' 
+
+            const statusMessage = isNowActive
+                ? 'activado'
                 : 'desactivado';
-                
+
             showConfirmation(
                 'Período Actualizado',
                 `El período "${updatedPeriod.name}" ha sido ${statusMessage} exitosamente.`,
@@ -229,7 +230,7 @@ const GestionEvaluacionesPage: React.FC = () => {
                 'success'
             );
         }
-        
+
         setShowEditarPeriodoModal(false);
         setPeriodToEdit(null);
     };
@@ -278,20 +279,20 @@ const GestionEvaluacionesPage: React.FC = () => {
 
                 try {
                     const updatedPeriod = await deactivatePeriod(period.id);
-                    
+
                     // Actualizar el estado de períodos
                     setPeriods(prev => {
-                        const newPeriods = prev.map(p => 
+                        const newPeriods = prev.map(p =>
                             p.id === period.id ? updatedPeriod : p
                         );
                         return newPeriods;
                     });
-                    
+
                     // Activar vista de períodos inactivos
                     setShowInactivePeriods(true);
-                    
+
                     hideConfirmation();
-                    
+
                     // Mostrar confirmación de éxito
                     showConfirmation(
                         'Período Desactivado',
@@ -342,20 +343,22 @@ const GestionEvaluacionesPage: React.FC = () => {
 
     const handleDeleteCriteria = (criteria: Criteria) => {
         showConfirmation(
-            'Eliminar Criterio',
-            `¿Está seguro de que desea eliminar el criterio "${criteria.name}"? Esta acción no se puede deshacer.`,
+            'Desactivar Criterio',
+            `¿Está seguro de que desea desactivar el criterio "${criteria.name}"?`,
             async () => {
                 setConfirmationState(prev => ({ ...prev, loading: true }));
                 setDeletingItems(prev => new Set(prev).add(criteria.id));
                 try {
-                    await deleteCriteria(criteria.id);
-                    setCriteria(prev => prev.filter(c => c.id !== criteria.id));
+                    await deactivateCriteria(criteria.id);  // Usar deactivateCriteria
+                    setCriteria(prev => prev.map(c =>
+                        c.id === criteria.id ? { ...c, is_active: false } : c
+                    ));
                     hideConfirmation();
                 } catch (error) {
-                    console.error('Error deleting criteria:', error);
+                    console.error('Error deactivating criteria:', error);
                     showConfirmation(
                         'Error',
-                        'Error al eliminar el criterio. Por favor, intente nuevamente.',
+                        'Error al desactivar el criterio. Por favor, intente nuevamente.',
                         () => hideConfirmation(),
                         'danger'
                     );
@@ -368,8 +371,19 @@ const GestionEvaluacionesPage: React.FC = () => {
                     setConfirmationState(prev => ({ ...prev, loading: false }));
                 }
             },
-            'danger'
+            'warning'
         );
+    };
+
+    const handleReactivateCriteria = async (criteria: Criteria) => {
+        try {
+            const reactivated = await reactivateCriteria(criteria.id);
+            setCriteria(prev => prev.map(c =>
+                c.id === criteria.id ? reactivated : c
+            ));
+        } catch (error) {
+            console.error('Error reactivating criteria:', error);
+        }
     };
 
     // Handlers para Plantillas
@@ -606,7 +620,7 @@ const GestionEvaluacionesPage: React.FC = () => {
                     refreshing={refreshing}
                     onRefresh={handleRefresh}
                 />
-                
+
                 {/* Main Content Grid */}
                 <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
                     {/* Configuration Panel - Left Side */}
@@ -633,6 +647,7 @@ const GestionEvaluacionesPage: React.FC = () => {
                             onDeletePeriod={handleDeletePeriod}
                             onEditCriteria={handleEditCriteria}
                             onDeleteCriteria={handleDeleteCriteria}
+                            onReactivateCriteria={handleReactivateCriteria}
                             onViewTemplate={handleViewTemplate}
                             onCloneTemplate={handleCloneTemplate}
                             onGenerateEval={handleGenerateEval}
@@ -640,7 +655,7 @@ const GestionEvaluacionesPage: React.FC = () => {
                             onEditTemplate={handleEditTemplate}
                         />
                     </div>
-                    
+
                     {/* Evaluations Panel - Right Side */}
                     <div className="col-span-7 flex flex-col">
                         <EvaluationsPanel

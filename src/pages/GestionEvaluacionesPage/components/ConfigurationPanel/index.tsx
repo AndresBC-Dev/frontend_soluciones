@@ -27,6 +27,7 @@ interface ConfigurationPanelProps {
   onDeletePeriod: (period: Period) => void;
   onEditCriteria: (criteria: Criteria) => void;
   onDeleteCriteria: (criteria: Criteria) => void;
+  onReactivateCriteria: (criteria: Criteria) => void;
   onViewTemplate: (template: Template) => void;
   onCloneTemplate: (template: Template) => void;
   onGenerateEval: (template: Template) => void;
@@ -56,6 +57,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   onDeletePeriod,
   onEditCriteria,
   onDeleteCriteria,
+  onReactivateCriteria,
   onViewTemplate,
   onCloneTemplate,
   onGenerateEval,
@@ -121,19 +123,16 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             deletingItems={deletingItems}
             onEdit={onEditPeriod}
             onDelete={onDeletePeriod}
-            onCreatePeriod={onCreatePeriod}
           />
         );
       case 'criterios':
         return (
           <CriteriaSection
             criteria={filteredCriteria}
-            showInactive={showInactiveCriteria}
             deletingItems={deletingItems}
             onEdit={onEditCriteria}
             onDelete={onDeleteCriteria}
-            onReactivate={(criteria) => console.log('Reactivate:', criteria)}
-            onToggleShowInactive={() => setShowInactiveCriteria(!showInactiveCriteria)}
+            onReactivate={onReactivateCriteria}
           />
         );
       case 'plantillas':

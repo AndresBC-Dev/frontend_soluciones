@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Target, X, Loader2, Plus, Percent } from 'lucide-react';
-import { createCriteria } from '../services/evaluationService';
-import type { Criteria, CreateCriteriaDTO } from '../services/evaluationService';
+import { createCriteria, getCriteria } from '../services/evaluationService';
+import type { Criteria, CreateCriteriaDTO } from '../types/evaluation';
 
 interface CrearCriterioModalProps {
   show: boolean;
@@ -16,16 +16,14 @@ interface CriteriaForm {
   category: string;
 }
 
-// Tipos locales (UI) y API
 type LocalCategory = 'productividad' | 'conducta_laboral' | 'habilidades';
 type ApiCategory = 'productivity' | 'work_conduct' | 'skills';
 
-// Función para mapear categorías locales a API
 const mapCategoryToApi = (localCategory: LocalCategory): ApiCategory => {
   const categoryMap: Record<LocalCategory, ApiCategory> = {
-    'productividad': 'productivity',
-    'conducta_laboral': 'work_conduct',
-    'habilidades': 'skills'
+    productividad: 'productivity',
+    conducta_laboral: 'work_conduct',
+    habilidades: 'skills',
   };
   return categoryMap[localCategory];
 };
@@ -37,22 +35,30 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     weight: '',
     category: '',
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [existingCriteria, setExistingCriteria] = useState<Criteria[]>([]);
 
-  const commonCategories: LocalCategory[] = [
-    'productividad',
-    'conducta_laboral',
-    'habilidades'
-  ];
+  const commonCategories: LocalCategory[] = ['productividad', 'conducta_laboral', 'habilidades'];
+
+  useEffect(() => {
+    const loadCriteria = async () => {
+      try {
+        const criteria = await getCriteria();
+        setExistingCriteria(criteria);
+      } catch (err) {
+        console.error('Error loading criteria for validation:', err);
+      }
+    };
+    if (show) {
+      loadCriteria();
+    }
+  }, [show]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
-
-    // Limpiar error cuando el usuario empiece a escribir
     if (error) setError(null);
   };
 
@@ -71,6 +77,10 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
       return 'El peso debe ser un número entre 0.01 y 1.0';
     }
 
+    if (existingCriteria.some(c => c.name.toLowerCase() === form.name.trim().toLowerCase())) {
+      return 'Ya existe un criterio con este nombre. Por favor, usa un nombre diferente.';
+    }
+
     return null;
   };
 
@@ -87,25 +97,20 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     setError(null);
 
     try {
-      // AQUÍ ESTÁ LA CORRECCIÓN: Usar mapCategoryToApi
       const criteriaData: CreateCriteriaDTO = {
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: mapCategoryToApi(form.category as LocalCategory) // <-- USAR LA FUNCIÓN DE MAPEO
+        category: mapCategoryToApi(form.category as LocalCategory),
       };
 
       const newCriteria = await createCriteria(criteriaData);
-
-      // Mostrar éxito
       setShowSuccess(true);
 
-      // Esperar un momento para que el usuario vea el mensaje
       setTimeout(() => {
         onCreated(newCriteria);
         handleClose();
       }, 1500);
-
     } catch (err: any) {
       console.error('Error creating criteria:', err);
       setError(err.message || 'Error al crear el criterio');
@@ -116,7 +121,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
 
   const handleClose = () => {
     if (loading) return;
-
     setForm({
       name: '',
       description: '',
@@ -133,8 +137,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
-
-        {/* Success State */}
         {showSuccess ? (
           <div className="text-center py-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -145,7 +147,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
                 <Target className="w-6 h-6 text-green-500" />
@@ -159,11 +160,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-
-              {/* Nombre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nombre del Criterio *
@@ -178,8 +175,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                   disabled={loading}
                 />
               </div>
-
-              {/* Descripción */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Descripción del Criterio *
@@ -194,8 +189,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                   disabled={loading}
                 />
               </div>
-
-              {/* Peso */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Percent className="inline w-4 h-4 mr-1" />
@@ -217,36 +210,30 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                   El peso representa la importancia del criterio. Ej: 0.3 = 30%
                 </p>
               </div>
-
-              {/* Categoría */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Categoría *
                 </label>
-                <div className="space-y-2">
-                  <select
-                    name="category"
-                    value={form.category}
-                    onChange={handleChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-                    disabled={loading}
-                  >
-                    <option value="">Seleccionar categoría</option>
-                    {commonCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                  disabled={loading}
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {commonCategories.map(cat => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
               </div>
-
-              {/* Error Message */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-red-600 text-sm">{error}</p>
                 </div>
               )}
-
-              {/* Preview */}
               {form.name && form.description && form.weight && form.category && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Vista previa:</h4>
@@ -264,8 +251,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                   </div>
                 </div>
               )}
-
-              {/* Buttons */}
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"

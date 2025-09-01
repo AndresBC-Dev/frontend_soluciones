@@ -1,607 +1,181 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshCw, AlertCircle } from 'lucide-react';
-
-// Componentes internos
-import HeaderSection from './components/HeaderSection';
-import ConfigurationPanel from './components/ConfigurationPanel';
-import EvaluationsPanel from './components/EvaluationsPanel';
-
-// Tipos
-import type { Period, Criteria, Template, Evaluation, Stats } from '../../types/evaluation';
-
-// Servicios
-import {
-  getCriteria,
-  getPeriods,
-  getTemplates,
-  getEvaluations,
-  deleteCriteria,
-  deactivatePeriod,
-  deleteTemplate,
-  deleteEvaluation,
-  cloneTemplate,
-} from '../../services/evaluationService';
-
-// Modales
-import CrearCriterioModal from '../../components/CrearCriterioModal';
-import CrearPeriodoModal from '../../components/CrearPeriodoModal';
-import CrearPlantillaModal from '../../components/CrearPlantillaModal';
-import CrearEvaluacionModal from '../../components/CrearEvaluacionModal';
-import ConfirmationModal from '../../components/ConfirmationModal';
+import React, { useState, useEffect } from 'react';
+import PeriodsSection from './components/ConfigurationPanel/PeriodsSection';
+import CriteriaSection from './components/ConfigurationPanel/CriteriaSection';
 import EditarPeriodoModal from '../../components/EditarPeriodoModal';
-import EditarCriterioModal from '../../components/EditarCriterioModal';
-import EditarPlantillaModal from '../../components/EditarPlantillaModal';
-import VerEvaluacionModal from '../../components/VerEvaluacionModal';
-
-interface ConfirmationState {
-  show: boolean;
-  title: string;
-  message: string;
-  onConfirm: () => void;
-  type: 'danger' | 'warning' | 'info' | 'success';
-  loading: boolean;
-}
+import CrearCriterioModal from '../../components/CrearCriterioModal';
+import { getPeriods, updatePeriod, deactivatePeriod, getCriteria, deactivateCriteria, reactivateCriteria } from '../../services/evaluationService';
+import type { Period, Criteria } from '../../types/evaluation';
 
 const GestionEvaluacionesPage: React.FC = () => {
-  // Estados principales
-  const [activeTab, setActiveTab] = useState<'periodos' | 'criterios' | 'plantillas'>('periodos');
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Estados de datos
   const [periods, setPeriods] = useState<Period[]>([]);
   const [criteria, setCriteria] = useState<Criteria[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-
-  // Estados de filtros y búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [showInactivePeriods, setShowInactivePeriods] = useState(false);
-
-  // Estados de carga individual
+  const [showInactiveCriteria, setShowInactiveCriteria] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'todos' | 'productivity' | 'work_conduct' | 'skills'>('todos');
   const [deletingItems, setDeletingItems] = useState<Set<number>>(new Set());
-  const [cloningItems, setCloningItems] = useState<Set<number>>(new Set());
-
-  // Estados de modales
-  const [showCrearCriterioModal, setShowCrearCriterioModal] = useState(false);
-  const [showCrearPeriodoModal, setShowCrearPeriodoModal] = useState(false);
-  const [showCrearPlantillaModal, setShowCrearPlantillaModal] = useState(false);
-  const [showCrearEvaluacionModal, setShowCrearEvaluacionModal] = useState(false);
   const [showEditarPeriodoModal, setShowEditarPeriodoModal] = useState(false);
-  const [showEditarCriterioModal, setShowEditarCriterioModal] = useState(false);
-  const [showEditarPlantillaModal, setShowEditarPlantillaModal] = useState(false);
-  const [showVerEvaluacionModal, setShowVerEvaluacionModal] = useState(false);
+  const [showCrearCriterioModal, setShowCrearCriterioModal] = useState(false);
   const [periodToEdit, setPeriodToEdit] = useState<Period | null>(null);
-  const [criteriaToEdit, setCriteriaToEdit] = useState<Criteria | null>(null);
-  const [templateToEdit, setTemplateToEdit] = useState<Template | null>(null);
-  const [evaluationToView, setEvaluationToView] = useState<Evaluation | null>(null);
 
-  // Estado del modal de confirmación
-  const [confirmationState, setConfirmationState] = useState<ConfirmationState>({
-    show: false,
-    title: '',
-    message: '',
-    onConfirm: () => {},
-    type: 'warning',
-    loading: false,
-  });
+  const loadData = async () => {
+    try {
+      const [periodsData, criteriaData] = await Promise.all([getPeriods(), getCriteria()]);
+      setPeriods(periodsData);
+      setCriteria(criteriaData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
 
-  // Carga inicial de datos
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [periodsData, criteriaData, templatesData, evaluationsData] = await Promise.all([
-        getPeriods(),
-        getCriteria(),
-        getTemplates(),
-        getEvaluations(),
-      ]);
-
-      const sortedPeriods = periodsData.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA;
-      });
-
-      setPeriods(sortedPeriods);
-      setCriteria(criteriaData);
-      setTemplates(templatesData);
-      setEvaluations(evaluationsData);
-      console.log('📊 Periods state updated:', sortedPeriods);
-    } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Error al cargar los datos. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  // Cálculo de estadísticas
-  const stats = useMemo<Stats>(() => ({
-    totalPeriods: periods.length,
-    activePeriods: periods.filter(p => p.is_active).length,
-    totalCriteria: criteria.length,
-    totalTemplates: templates.length,
-    totalEvaluations: evaluations.length,
-    averageWeight: criteria.length > 0
-      ? Math.round(criteria.reduce((sum, c) => sum + c.weight, 0) / criteria.length)
-      : 0,
-  }), [periods, criteria, templates, evaluations]);
-
-  // Categorías únicas
-  const categories = useMemo(() => {
-    const cats: string[] = [
-      'todos',
-      ...new Set(criteria.map(c => c.category)),
-    ];
-    return cats;
-  }, [criteria]);
-
-  // Función helper para mostrar confirmación
-  const showConfirmation = (
-    title: string,
-    message: string,
-    onConfirm: () => void,
-    type: 'danger' | 'warning' | 'info' | 'success' = 'warning'
-  ) => {
-    setConfirmationState({
-      show: true,
-      title,
-      message,
-      onConfirm,
-      type,
-      loading: false,
-    });
-  };
-
-  const hideConfirmation = () => {
-    setConfirmationState(prev => ({ ...prev, show: false }));
-  };
-
-  // Handlers para Períodos
   const handleEditPeriod = (period: Period) => {
     setPeriodToEdit(period);
     setShowEditarPeriodoModal(true);
   };
 
-  const handlePeriodUpdated = (updatedPeriod: Period) => {
-    setPeriods(prev => {
-      const newPeriods = prev.map(p => p.id === updatedPeriod.id ? updatedPeriod : p);
-      console.log('📊 Periods state after update:', newPeriods);
-      return newPeriods;
-    });
-    setShowEditarPeriodoModal(false);
-    setPeriodToEdit(null);
-    showConfirmation(
-      'Período Actualizado',
-      `El período "${updatedPeriod.name}" ha sido actualizado exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
-  const handlePeriodCreated = (period: Period) => {
-    setPeriods(prev => {
-      const newPeriods = [...prev, period];
-      console.log('📊 Periods state after creation:', newPeriods);
-      return newPeriods;
-    });
-    setShowCrearPeriodoModal(false);
-    showConfirmation(
-      'Período Creado',
-      `El período "${period.name}" ha sido creado exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
-  const handleDeletePeriod = (period: Period) => {
-    if (!period.is_active) {
-      showConfirmation(
-        'Período ya inactivo',
-        `El período "${period.name}" ya está desactivado.`,
-        () => hideConfirmation(),
-        'info'
-      );
-      return;
-    }
-
-    showConfirmation(
-      'Desactivar Período',
-      `¿Está seguro de que desea desactivar el período "${period.name}"? 
-    
-    El período:
-    • No se podrá usar para crear nuevas evaluaciones
-    • Las evaluaciones existentes no se verán afectadas
-    • Podrá reactivarlo desde el modo de edición`,
-      async () => {
-        setConfirmationState(prev => ({ ...prev, loading: true }));
-        setDeletingItems(prev => new Set(prev).add(period.id));
-
-        try {
-          const updatedPeriod = await deactivatePeriod(period.id);
-          setPeriods(prev => {
-            const newPeriods = prev.map(p => p.id === period.id ? updatedPeriod : p);
-            console.log('📊 Periods state after deactivate:', newPeriods);
-            return newPeriods;
-          });
-          hideConfirmation();
-          showConfirmation(
-            'Período Desactivado',
-            `El período "${period.name}" ha sido desactivado exitosamente.`,
-            () => hideConfirmation(),
-            'success'
-          );
-        } catch (error) {
-          console.error('Error deactivating period:', error);
-          showConfirmation(
-            'Error',
-            'No se pudo desactivar el período. Por favor, intente nuevamente.',
-            () => hideConfirmation(),
-            'danger'
-          );
-        } finally {
-          setDeletingItems(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(period.id);
-            return newSet;
-          });
-          setConfirmationState(prev => ({ ...prev, loading: false }));
-        }
-      },
-      'warning'
-    );
-  };
-
-  // Handlers para Criterios
-  const handleEditCriteria = (criteria: Criteria) => {
-    setCriteriaToEdit(criteria);
-    setShowEditarCriterioModal(true);
-  };
-
-  const handleCriteriaUpdated = (updatedCriteria: Criteria) => {
-    setCriteria(prev => prev.map(c => c.id === updatedCriteria.id ? updatedCriteria : c));
-    setShowEditarCriterioModal(false);
-    setCriteriaToEdit(null);
-    showConfirmation(
-      'Criterio Actualizado',
-      `El criterio "${updatedCriteria.name}" ha sido actualizado exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
-  const handleDeleteCriteria = (criteria: Criteria) => {
-    showConfirmation(
-      'Eliminar Criterio',
-      `¿Está seguro de que desea eliminar el criterio "${criteria.name}"? Esta acción no se puede deshacer.`,
-      async () => {
-        setConfirmationState(prev => ({ ...prev, loading: true }));
-        setDeletingItems(prev => new Set(prev).add(criteria.id));
-        try {
-          await deleteCriteria(criteria.id);
-          setCriteria(prev => prev.filter(c => c.id !== criteria.id));
-          hideConfirmation();
-        } catch (error) {
-          console.error('Error deleting criteria:', error);
-          showConfirmation(
-            'Error',
-            'Error al eliminar el criterio. Por favor, intente nuevamente.',
-            () => hideConfirmation(),
-            'danger'
-          );
-        } finally {
-          setDeletingItems(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(criteria.id);
-            return newSet;
-          });
-          setConfirmationState(prev => ({ ...prev, loading: false }));
-        }
-      },
-      'danger'
-    );
-  };
-
-  // Handlers para Plantillas
-  const handleEditTemplate = (template: Template) => {
-    setTemplateToEdit(template);
-    setShowEditarPlantillaModal(true);
-  };
-
-  const handleTemplateUpdated = (updatedTemplate: Template) => {
-    setTemplates(prev => {
-      const newTemplates = prev.map(t => t.id === updatedTemplate.id ? updatedTemplate : t);
-      console.log('📊 Templates state after update:', newTemplates);
-      return newTemplates;
-    });
-    setShowEditarPlantillaModal(false);
-    setTemplateToEdit(null);
-    showConfirmation(
-      'Plantilla Actualizada',
-      `La plantilla "${updatedTemplate.name}" ha sido actualizada exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
-  const handleViewTemplate = (template: Template) => {
-    console.log('View template:', template);
-  };
-
-  const handleCloneTemplate = async (template: Template) => {
-    setCloningItems(prev => new Set(prev).add(template.id));
+  const handleDeletePeriod = async (period: Period) => {
+    setDeletingItems(prev => new Set(prev).add(period.id));
     try {
-      const clonedTemplate = await cloneTemplate(template.id);
-      setTemplates(prev => [...prev, clonedTemplate]);
-      showConfirmation(
-        'Plantilla Clonada',
-        `La plantilla "${clonedTemplate.name}" ha sido clonada exitosamente.`,
-        () => hideConfirmation(),
-        'success'
-      );
+      await deactivatePeriod(period.id);
+      await loadData();
     } catch (error) {
-      console.error('Error cloning template:', error);
-      showConfirmation(
-        'Error',
-        'Error al clonar la plantilla. Por favor, intente nuevamente.',
-        () => hideConfirmation(),
-        'danger'
-      );
+      console.error('Error deactivating period:', error);
     } finally {
-      setCloningItems(prev => {
+      setDeletingItems(prev => {
         const newSet = new Set(prev);
-        newSet.delete(template.id);
+        newSet.delete(period.id);
         return newSet;
       });
     }
   };
 
-  const handleGenerateEval = (template: Template) => {
-    console.log('Generate evaluation from template:', template);
-    setShowCrearEvaluacionModal(true);
-    setTemplateToEdit(template);
-  };
-
-  const handleDeleteTemplate = (template: Template) => {
-    showConfirmation(
-      'Eliminar Plantilla',
-      `¿Está seguro de que desea eliminar la plantilla "${template.name}"? Esta acción no se puede deshacer.`,
-      async () => {
-        setConfirmationState(prev => ({ ...prev, loading: true }));
-        setDeletingItems(prev => new Set(prev).add(template.id));
-        try {
-          await deleteTemplate(template.id);
-          setTemplates(prev => prev.filter(t => t.id !== template.id));
-          hideConfirmation();
-        } catch (error) {
-          console.error('Error deleting template:', error);
-          showConfirmation(
-            'Error',
-            'Error al eliminar la plantilla. Por favor, intente nuevamente.',
-            () => hideConfirmation(),
-            'danger'
-          );
-        } finally {
-          setDeletingItems(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(template.id);
-            return newSet;
-          });
-          setConfirmationState(prev => ({ ...prev, loading: false }));
-        }
-      },
-      'danger'
+  const handlePeriodUpdated = (updatedPeriod: Period) => {
+    setPeriods(prev =>
+      prev.map(p => (p.id === updatedPeriod.id ? updatedPeriod : p))
     );
+    setShowEditarPeriodoModal(false);
+    setPeriodToEdit(null);
   };
 
-  // Handlers para Evaluaciones
-  const handleViewEvaluation = (evaluation: Evaluation) => {
-    setEvaluationToView(evaluation);
-    setShowVerEvaluacionModal(true);
+  const handleToggleShowInactivePeriods = () => {
+    setShowInactivePeriods(prev => !prev);
   };
 
-  const handlePerformEvaluation = (evaluation: Evaluation) => {
-    setEvaluationToView(evaluation);
-    setShowVerEvaluacionModal(true);
+  const handleEditCriteria = (criterion: Criteria) => {
+    console.log('Edit criteria:', criterion);
+    // Implementar modal de edición de criterios si es necesario
   };
 
-  const handleEvaluationUpdated = (updatedEvaluation: Evaluation) => {
-    setEvaluations(prev => {
-      const newEvaluations = prev.map(e => e.id === updatedEvaluation.id ? updatedEvaluation : e);
-      console.log('📊 Evaluations state after update:', newEvaluations);
-      return newEvaluations;
-    });
-    setShowVerEvaluacionModal(false);
-    setEvaluationToView(null);
-    showConfirmation(
-      'Evaluación Actualizada',
-      `La evaluación de "${updatedEvaluation.employee_name}" ha sido actualizada exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
+  const handleDeleteCriteria = async (criterion: Criteria) => {
+    setDeletingItems(prev => new Set(prev).add(criterion.id));
+    try {
+      await deactivateCriteria(criterion.id);
+      await loadData();
+    } catch (error) {
+      console.error('Error deactivating criteria:', error);
+    } finally {
+      setDeletingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(criterion.id);
+        return newSet;
+      });
+    }
   };
 
-  const handleExportEvaluation = (evaluation: Evaluation) => {
-    console.log('Export evaluation:', evaluation);
-    showConfirmation(
-      'Evaluación Exportada',
-      `La evaluación de "${evaluation.employee_name}" ha sido exportada como PDF.`,
-      () => hideConfirmation(),
-      'success'
-    );
+  const handleReactivateCriteria = async (criterion: Criteria) => {
+    setDeletingItems(prev => new Set(prev).add(criterion.id));
+    try {
+      await reactivateCriteria(criterion.id);
+      await loadData();
+    } catch (error) {
+      console.error('Error reactivating criteria:', error);
+    } finally {
+      setDeletingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(criterion.id);
+        return newSet;
+      });
+    }
   };
 
-  const handleDeleteEvaluation = (evaluation: Evaluation) => {
-    showConfirmation(
-      'Eliminar Evaluación',
-      `¿Está seguro de que desea eliminar la evaluación de "${evaluation.employee_name}"? Esta acción no se puede deshacer.`,
-      async () => {
-        setConfirmationState(prev => ({ ...prev, loading: true }));
-        setDeletingItems(prev => new Set(prev).add(evaluation.id));
-        try {
-          await deleteEvaluation(evaluation.id);
-          setEvaluations(prev => prev.filter(e => e.id !== evaluation.id));
-          hideConfirmation();
-        } catch (error) {
-          console.error('Error deleting evaluation:', error);
-          showConfirmation(
-            'Error',
-            'Error al eliminar la evaluación. Por favor, intente nuevamente.',
-            () => hideConfirmation(),
-            'danger'
-          );
-        } finally {
-          setDeletingItems(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(evaluation.id);
-            return newSet;
-          });
-          setConfirmationState(prev => ({ ...prev, loading: false }));
-        }
-      },
-      'danger'
-    );
-  };
-
-  // Handlers de creación exitosa
-  const handleCriteriaCreated = (criteria: Criteria) => {
-    setCriteria(prev => [...prev, criteria]);
+  const handleCriteriaCreated = (newCriteria: Criteria) => {
+    setCriteria(prev => [...prev, newCriteria]);
     setShowCrearCriterioModal(false);
-    showConfirmation(
-      'Criterio Creado',
-      `El criterio "${criteria.name}" ha sido creado exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
   };
 
-  const handleTemplateCreated = (template: Template) => {
-    setTemplates(prev => [...prev, template]);
-    setShowCrearPlantillaModal(false);
-    showConfirmation(
-      'Plantilla Creada',
-      `La plantilla "${template.name}" ha sido creada exitosamente.`,
-      () => hideConfirmation(),
-      'success'
-    );
+  const handleToggleShowInactiveCriteria = () => {
+    setShowInactiveCriteria(prev => !prev);
   };
-
-  const handleEvaluationCreated = () => {
-    loadData();
-    setShowCrearEvaluacionModal(false);
-    setTemplateToEdit(null); // Clear templateToEdit after creation
-    showConfirmation(
-      'Evaluación Creada',
-      'La evaluación ha sido creada exitosamente.',
-      () => hideConfirmation(),
-      'success'
-    );
-  };
-
-  // Renderizado de estados de carga y error
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <RefreshCw className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-600">Cargando datos...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-900 font-semibold mb-2">Error al cargar los datos</p>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 min-h-screen">
-      <HeaderSection
-        stats={stats}
-        categories={categories}
-        refreshing={refreshing}
-        onRefresh={handleRefresh}
-      />
-      <div className="grid grid-cols-12 gap-6 h-[calc(100vh-300px)]">
-        <div className="col-span-5 flex flex-col">
-          <ConfigurationPanel
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            categories={categories}
-            showInactivePeriods={showInactivePeriods}
-            setShowInactivePeriods={setShowInactivePeriods}
-            periods={periods}
-            criteria={criteria}
-            templates={templates}
-            deletingItems={deletingItems}
-            cloningItems={cloningItems}
-            onCreatePeriod={() => setShowCrearPeriodoModal(true)}
-            onCreateCriteria={() => setShowCrearCriterioModal(true)}
-            onCreateTemplate={() => setShowCrearPlantillaModal(true)}
-            onEditPeriod={handleEditPeriod}
-            onDeletePeriod={handleDeletePeriod}
-            onEditCriteria={handleEditCriteria}
-            onDeleteCriteria={handleDeleteCriteria}
-            onViewTemplate={handleViewTemplate}
-            onCloneTemplate={handleCloneTemplate}
-            onGenerateEval={handleGenerateEval}
-            onDeleteTemplate={handleDeleteTemplate}
-            onEditTemplate={handleEditTemplate}
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Gestión de Evaluaciones</h1>
+      <div className="mb-4 flex items-center gap-4">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Buscar períodos o criterios..."
+          className="border rounded p-2 flex-1"
+        />
+        <select
+          value={selectedCategory}
+          onChange={e => setSelectedCategory(e.target.value as 'todos' | 'productivity' | 'work_conduct' | 'skills')}
+          className="border rounded p-2"
+        >
+          <option value="todos">Todas las categorías</option>
+          <option value="productivity">Productividad</option>
+          <option value="work_conduct">Conducta Laboral</option>
+          <option value="skills">Habilidades</option>
+        </select>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showInactivePeriods}
+            onChange={handleToggleShowInactivePeriods}
           />
-        </div>
-        <div className="col-span-7 flex flex-col">
-          <EvaluationsPanel
-            evaluations={evaluations}
-            deletingItems={deletingItems}
-            onCreateEvaluation={() => setShowCrearEvaluacionModal(true)}
-            onViewEvaluation={handleViewEvaluation}
-            onPerformEvaluation={handlePerformEvaluation}
-            onDeleteEvaluation={handleDeleteEvaluation}
-            onExportEvaluation={handleExportEvaluation}
+          Mostrar períodos inactivos y finalizados
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={showInactiveCriteria}
+            onChange={handleToggleShowInactiveCriteria}
           />
-        </div>
+          Mostrar criterios inactivos
+        </label>
+        <button
+          onClick={() => setShowCrearCriterioModal(true)}
+          className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+        >
+          Crear Criterio
+        </button>
       </div>
-      <CrearCriterioModal
-        show={showCrearCriterioModal}
-        onClose={() => setShowCrearCriterioModal(false)}
-        onCreated={handleCriteriaCreated}
+      <h2 className="text-xl font-semibold mb-2">Períodos</h2>
+      <PeriodsSection
+        periods={periods}
+        searchTerm={searchTerm}
+        showInactivePeriods={showInactivePeriods}
+        deletingItems={deletingItems}
+        onEdit={handleEditPeriod}
+        onDelete={handleDeletePeriod}
+        onToggleShowExpired={handleToggleShowInactivePeriods}
       />
-      <CrearPeriodoModal
-        show={showCrearPeriodoModal}
-        onClose={() => setShowCrearPeriodoModal(false)}
-        onCreated={handlePeriodCreated}
+      <h2 className="text-xl font-semibold mb-2 mt-6">Criterios</h2>
+      <CriteriaSection
+        criteria={criteria}
+        searchTerm={searchTerm}
+        selectedCategory={selectedCategory}
+        showInactiveCriteria={showInactiveCriteria}
+        deletingItems={deletingItems}
+        onEdit={handleEditCriteria}
+        onDelete={handleDeleteCriteria}
+        onReactivate={handleReactivateCriteria}
+        onToggleShowInactive={handleToggleShowInactiveCriteria}
       />
       <EditarPeriodoModal
         show={showEditarPeriodoModal}
@@ -612,56 +186,10 @@ const GestionEvaluacionesPage: React.FC = () => {
         }}
         onUpdated={handlePeriodUpdated}
       />
-      <CrearPlantillaModal
-        show={showCrearPlantillaModal}
-        onClose={() => setShowCrearPlantillaModal(false)}
-        onCreated={handleTemplateCreated}
-      />
-      <EditarPlantillaModal
-        show={showEditarPlantillaModal}
-        template={templateToEdit}
-        onClose={() => {
-          setShowEditarPlantillaModal(false);
-          setTemplateToEdit(null);
-        }}
-        onUpdated={handleTemplateUpdated}
-      />
-      <CrearEvaluacionModal
-        show={showCrearEvaluacionModal}
-        onClose={() => {
-          setShowCrearEvaluacionModal(false);
-          setTemplateToEdit(null); // Clear templateToEdit on close
-        }}
-        onCreated={handleEvaluationCreated}
-      />
-      <EditarCriterioModal
-        show={showEditarCriterioModal}
-        criteria={criteriaToEdit}
-        onClose={() => {
-          setShowEditarCriterioModal(false);
-          setCriteriaToEdit(null);
-        }}
-        onUpdated={handleCriteriaUpdated}
-      />
-      <VerEvaluacionModal
-        show={showVerEvaluacionModal}
-        evaluation={evaluationToView}
-        onClose={() => {
-          setShowVerEvaluacionModal(false);
-          setEvaluationToView(null);
-        }}
-        onUpdated={handleEvaluationUpdated}
-        onExport={handleExportEvaluation}
-      />
-      <ConfirmationModal
-        show={confirmationState.show}
-        onClose={hideConfirmation}
-        onConfirm={confirmationState.onConfirm}
-        title={confirmationState.title}
-        message={confirmationState.message}
-        type={confirmationState.type}
-        loading={confirmationState.loading}
-        confirmText={confirmationState.type === 'success' ? 'Entendido' : 'Confirmar'}
+      <CrearCriterioModal
+        show={showCrearCriterioModal}
+        onClose={() => setShowCrearCriterioModal(false)}
+        onCreated={handleCriteriaCreated}
       />
     </div>
   );

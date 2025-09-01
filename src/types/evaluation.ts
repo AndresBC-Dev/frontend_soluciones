@@ -5,6 +5,7 @@ export interface Criteria {
   category: 'productivity' | 'work_conduct' | 'skills';
   weight: number;
   is_active: boolean;
+  can_delete?: boolean; // Añadido para indicar si el criterio puede eliminarse
   created_at: string;
   updated_at: string;
 }
@@ -16,8 +17,11 @@ export interface Period {
   start_date: string;
   end_date: string;
   due_date: string;
-  status?: 'draft' | 'active' | 'closed' | 'archived';
+  status?: 'draft' | 'active' | 'closed' | 'archived' | 'completed';
   is_active: boolean;
+  is_expired?: boolean;
+  can_modify?: boolean;
+  can_delete?: boolean;
   created_at?: string;
   updated_at: string;
 }
@@ -96,6 +100,10 @@ export interface CreatePeriodDTO {
   end_date: string;
   due_date: string;
   is_active?: boolean;
+}
+
+export interface UpdatePeriodDTO extends Partial<CreatePeriodDTO> {
+  status?: 'draft' | 'active' | 'closed' | 'archived' | 'completed';
 }
 
 export interface CreateTemplateDTO {

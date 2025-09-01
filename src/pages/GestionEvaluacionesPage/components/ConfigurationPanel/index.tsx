@@ -1,37 +1,30 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { Plus, Search, Clock, Target, FileText } from 'lucide-react';
-import type { Period, Criteria, Template } from '../../../../types/evaluation';
-import CriteriaSection from './CriteriaSection';
+import { Search, Clock, Target } from 'lucide-react';
+import type { Period, Criteria } from '../../../../types/evaluation';
 import PeriodsSection from './PeriodsSection';
-import TemplatesSection from './TemplatesSection';
+import CriteriaSection from './CriteriaSection';
 
 interface ConfigurationPanelProps {
-  activeTab: 'periodos' | 'criterios' | 'plantillas';
-  setActiveTab: Dispatch<SetStateAction<'periodos' | 'criterios' | 'plantillas'>>;
+  activeTab: 'periodos' | 'criterios';
+  setActiveTab: Dispatch<SetStateAction<'periodos' | 'criterios'>>;
   searchTerm: string;
   setSearchTerm: Dispatch<SetStateAction<string>>;
-  selectedCategory: string;
-  setSelectedCategory: Dispatch<SetStateAction<string>>;
-  categories: string[];
+  selectedCategory: 'todos' | 'productivity' | 'work_conduct' | 'skills';
+  setSelectedCategory: Dispatch<SetStateAction<'todos' | 'productivity' | 'work_conduct' | 'skills'>>;
+  categories: readonly ('todos' | 'productivity' | 'work_conduct' | 'skills')[];
   showInactivePeriods: boolean;
   setShowInactivePeriods: Dispatch<SetStateAction<boolean>>;
+  showInactiveCriteria: boolean;
+  setShowInactiveCriteria: Dispatch<SetStateAction<boolean>>;
   periods: Period[];
   criteria: Criteria[];
-  templates: Template[];
   deletingItems: Set<number>;
-  cloningItems: Set<number>;
-  onCreatePeriod: () => void;
-  onCreateCriteria: () => void;
-  onCreateTemplate: () => void;
   onEditPeriod: (period: Period) => void;
   onDeletePeriod: (period: Period) => void;
   onEditCriteria: (criteria: Criteria) => void;
   onDeleteCriteria: (criteria: Criteria) => void;
-  onEditTemplate: (template: Template) => void;
-  onViewTemplate: (template: Template) => void;
-  onCloneTemplate: (template: Template) => void;
-  onGenerateEval: (template: Template) => void;
-  onDeleteTemplate: (template: Template) => void;
+  onReactivateCriteria: (criteria: Criteria) => void;
+  onCreateCriteria: () => void;
 }
 
 const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
@@ -44,28 +37,21 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   categories,
   showInactivePeriods,
   setShowInactivePeriods,
+  showInactiveCriteria,
+  setShowInactiveCriteria,
   periods,
   criteria,
-  templates,
   deletingItems,
-  cloningItems,
-  onCreatePeriod,
-  onCreateCriteria,
-  onCreateTemplate,
   onEditPeriod,
   onDeletePeriod,
   onEditCriteria,
   onDeleteCriteria,
-  onEditTemplate,
-  onViewTemplate,
-  onCloneTemplate,
-  onGenerateEval,
-  onDeleteTemplate,
+  onReactivateCriteria,
+  onCreateCriteria,
 }) => {
   const tabs = [
-    { key: 'periodos' as const, label: 'Períodos', icon: Clock, action: onCreatePeriod },
+    { key: 'periodos' as const, label: 'Períodos', icon: Clock },
     { key: 'criterios' as const, label: 'Criterios', icon: Target, action: onCreateCriteria },
-    { key: 'plantillas' as const, label: 'Plantillas', icon: FileText, action: onCreateTemplate },
   ];
 
   const renderContent = () => {
@@ -79,6 +65,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             deletingItems={deletingItems}
             onEdit={onEditPeriod}
             onDelete={onDeletePeriod}
+            onToggleShowExpired={() => setShowInactivePeriods(!showInactivePeriods)}
           />
         );
       case 'criterios':
@@ -87,24 +74,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             criteria={criteria}
             searchTerm={searchTerm}
             selectedCategory={selectedCategory}
+            showInactiveCriteria={showInactiveCriteria}
             deletingItems={deletingItems}
             onEdit={onEditCriteria}
             onDelete={onDeleteCriteria}
-          />
-        );
-      case 'plantillas':
-        return (
-          <TemplatesSection
-            templates={templates}
-            criteria={criteria} // Add criteria prop
-            searchTerm={searchTerm}
-            deletingItems={deletingItems}
-            cloningItems={cloningItems}
-            onView={onViewTemplate}
-            onEdit={onEditTemplate}
-            onClone={onCloneTemplate}
-            onGenerateEval={onGenerateEval}
-            onDelete={onDeleteTemplate}
+            onReactivate={onReactivateCriteria}
+            onToggleShowInactive={() => setShowInactiveCriteria(!showInactiveCriteria)}
           />
         );
       default:
@@ -114,20 +89,20 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex-1 flex flex-col">
-      {/* Header con pestañas */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">Configuración</h2>
-        <button
-          onClick={tabs.find(tab => tab.key === activeTab)?.action}
-          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
+        {activeTab === 'criterios' && (
+          <button
+            onClick={onCreateCriteria}
+            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+          >
+            <span className="text-sm font-medium">Crear Criterio</span>
+          </button>
+        )}
       </div>
 
-      {/* Pestañas */}
       <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-        {tabs.map((tab) => {
+        {tabs.map(tab => {
           const Icon = tab.icon;
           return (
             <button
@@ -146,33 +121,40 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         })}
       </div>
 
-      {/* Barra de búsqueda */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <input
           type="text"
           placeholder={`Buscar ${activeTab}...`}
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 
-      {/* Filtros específicos por pestaña */}
       {activeTab === 'criterios' && (
-        <div className="mb-4">
+        <div className="mb-4 space-y-4">
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={e => setSelectedCategory(e.target.value as 'todos' | 'productivity' | 'work_conduct' | 'skills')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="todos">Todas las categorías</option>
             {categories.filter(cat => cat !== 'todos').map(category => (
               <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
               </option>
             ))}
           </select>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={showInactiveCriteria}
+              onChange={() => setShowInactiveCriteria(!showInactiveCriteria)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Mostrar criterios inactivos
+          </label>
         </div>
       )}
 
@@ -182,15 +164,14 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             <input
               type="checkbox"
               checked={showInactivePeriods}
-              onChange={(e) => setShowInactivePeriods(e.target.checked)}
+              onChange={() => setShowInactivePeriods(!showInactivePeriods)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            Mostrar períodos inactivos
+            Mostrar períodos inactivos y finalizados
           </label>
         </div>
       )}
 
-      {/* Contenido principal */}
       <div className="flex-1 overflow-y-auto">
         {renderContent()}
       </div>

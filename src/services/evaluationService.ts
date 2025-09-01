@@ -64,10 +64,11 @@ export const getCriteria = async (): Promise<Criteria[]> => {
     const data = await handleResponse<Criteria[]>(response);
     console.log('✅ Criteria loaded:', data);
     return Array.isArray(data)
-      ? data.map(c => ({
-          ...c,
-          is_active: c.is_active ?? true,
-          can_delete: c.can_delete ?? true,
+      ? data.map(C => ({
+          ...C,
+          is_active: C.is_active ?? true,
+          can_delete: C.can_delete ?? true,
+          category: C.category as 'productividad' | 'conducta_laboral' | 'habilidades',
         }))
       : [];
   } catch (error) {
@@ -91,6 +92,7 @@ export const createCriteria = async (criteriaData: CreateCriteriaDTO): Promise<C
       ...data,
       is_active: data.is_active ?? true,
       can_delete: data.can_delete ?? true,
+      category: data.category as 'productividad' | 'conducta_laboral' | 'habilidades',
     };
   } catch (error) {
     console.error('❌ Error creating criteria:', error);
@@ -116,6 +118,7 @@ export const updateCriteria = async (
       ...data,
       is_active: data.is_active ?? true,
       can_delete: data.can_delete ?? true,
+      category: data.category as 'productividad' | 'conducta_laboral' | 'habilidades',
     };
   } catch (error) {
     console.error('❌ Error updating criteria:', error);
@@ -138,6 +141,7 @@ export const deactivateCriteria = async (id: number): Promise<Criteria> => {
       ...data,
       is_active: false,
       can_delete: data.can_delete ?? true,
+      category: data.category as 'productividad' | 'conducta_laboral' | 'habilidades',
     };
   } catch (error) {
     console.error('❌ Error deactivating criteria:', error);
@@ -160,6 +164,7 @@ export const reactivateCriteria = async (id: number): Promise<Criteria> => {
       ...data,
       is_active: true,
       can_delete: data.can_delete ?? true,
+      category: data.category as 'productividad' | 'conducta_laboral' | 'habilidades',
     };
   } catch (error) {
     console.error('❌ Error reactivating criteria:', error);

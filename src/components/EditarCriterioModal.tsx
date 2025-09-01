@@ -10,34 +10,7 @@ interface EditarCriterioModalProps {
   onUpdated: (updatedCriteria: Criteria) => void;
 }
 
-type LocalCategory = 'productividad' | 'conducta_laboral' | 'habilidades';
-type ApiCategory = 'productivity' | 'work_conduct' | 'skills';
-
-const commonCategories: LocalCategory[] = [
-  'productividad',
-  'conducta_laboral',
-  'habilidades'
-];
-
-// Función para mapear categorías locales a API
-const mapCategoryToApi = (localCategory: LocalCategory): ApiCategory => {
-  const categoryMap: Record<LocalCategory, ApiCategory> = {
-    'productividad': 'productivity',
-    'conducta_laboral': 'work_conduct',
-    'habilidades': 'skills'
-  };
-  return categoryMap[localCategory];
-};
-
-// Función para mapear categorías API a locales (para cuando cargas datos)
-const mapCategoryFromApi = (apiCategory: string): LocalCategory => {
-  const categoryMap: Record<string, LocalCategory> = {
-    'productivity': 'productividad',
-    'work_conduct': 'conducta_laboral',
-    'skills': 'habilidades'
-  };
-  return categoryMap[apiCategory] || 'habilidades';
-};
+const commonCategories = ['productividad', 'conducta_laboral', 'habilidades'] as const;
 
 const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
   show,
@@ -49,9 +22,8 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
     name: '',
     description: '',
     weight: '',
-    category: '' as LocalCategory | ''
+    category: '' as 'productividad' | 'conducta_laboral' | 'habilidades' | ''
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +34,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
         name: criteria.name,
         description: criteria.description,
         weight: criteria.weight.toString(),
-        category: mapCategoryFromApi(criteria.category) // Mapear de API a local
+        category: criteria.category // Ya viene en español desde el backend
       });
     }
   }, [criteria]);
@@ -79,7 +51,7 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
     if (!form.weight.trim()) return 'El peso es obligatorio.';
     if (!form.category.trim()) return 'La categoría es obligatoria.';
 
-    if (!commonCategories.includes(form.category as LocalCategory)) {
+    if (!commonCategories.includes(form.category as any)) {
       return 'La categoría debe ser productividad, conducta_laboral o habilidades.';
     }
 
@@ -109,8 +81,10 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: mapCategoryToApi(form.category as LocalCategory) // MAPEAR A API
+        category: form.category as 'productividad' | 'conducta_laboral' | 'habilidades'
       };
+
+      console.log('🔄 Sending update criteria to backend:', updateData);
 
       const updatedCriteria = await updateCriteria(criteria.id, updateData);
       onUpdated(updatedCriteria);
@@ -227,7 +201,11 @@ const EditarCriterioModal: React.FC<EditarCriterioModalProps> = ({
             >
               <option value="">Seleccionar categoría</option>
               {commonCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat === 'productividad' ? 'Productividad' :
+                   cat === 'conducta_laboral' ? 'Conducta Laboral' :
+                   'Habilidades'}
+                </option>
               ))}
             </select>
           </div>

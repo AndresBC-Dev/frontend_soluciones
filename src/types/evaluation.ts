@@ -2,12 +2,19 @@ export interface Criteria {
   id: number;
   name: string;
   description: string;
-  category: 'productivity' | 'work_conduct' | 'skills';
+  category: 'productividad' | 'conducta_laboral' | 'habilidades';
   weight: number;
   is_active: boolean;
-  can_delete?: boolean; // Añadido para indicar si el criterio puede eliminarse
+  can_delete?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateCriteriaDTO {
+  name: string;
+  description: string;
+  category: 'productividad' | 'conducta_laboral' | 'habilidades';
+  weight: number;
 }
 
 export interface Period {
@@ -84,13 +91,6 @@ export interface Stats {
   totalTemplates: number;
   totalEvaluations: number;
   averageWeight: number;
-}
-
-export interface CreateCriteriaDTO {
-  name: string;
-  description: string;
-  category: 'productivity' | 'work_conduct' | 'skills';
-  weight: number;
 }
 
 export interface CreatePeriodDTO {

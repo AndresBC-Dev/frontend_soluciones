@@ -16,17 +16,7 @@ interface CriteriaForm {
   category: string;
 }
 
-type LocalCategory = 'productividad' | 'conducta_laboral' | 'habilidades';
-type ApiCategory = 'productivity' | 'work_conduct' | 'skills';
-
-const mapCategoryToApi = (localCategory: LocalCategory): ApiCategory => {
-  const categoryMap: Record<LocalCategory, ApiCategory> = {
-    productividad: 'productivity',
-    conducta_laboral: 'work_conduct',
-    habilidades: 'skills',
-  };
-  return categoryMap[localCategory];
-};
+const commonCategories = ['productividad', 'conducta_laboral', 'habilidades'] as const;
 
 const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, onCreated }) => {
   const [form, setForm] = useState<CriteriaForm>({
@@ -39,8 +29,6 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [existingCriteria, setExistingCriteria] = useState<Criteria[]>([]);
-
-  const commonCategories: LocalCategory[] = ['productividad', 'conducta_laboral', 'habilidades'];
 
   useEffect(() => {
     const loadCriteria = async () => {
@@ -68,7 +56,7 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
     if (!form.weight.trim()) return 'El peso es obligatorio.';
     if (!form.category.trim()) return 'La categoría es obligatoria.';
 
-    if (!commonCategories.includes(form.category as LocalCategory)) {
+    if (!commonCategories.includes(form.category as any)) {
       return 'La categoría debe ser productividad, conducta_laboral o habilidades.';
     }
 
@@ -101,8 +89,10 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
         name: form.name.trim(),
         description: form.description.trim(),
         weight: parseFloat(form.weight),
-        category: mapCategoryToApi(form.category as LocalCategory),
+        category: form.category as 'productividad' | 'conducta_laboral' | 'habilidades',
       };
+
+      console.log('🔄 Sending criteria to backend:', criteriaData);
 
       const newCriteria = await createCriteria(criteriaData);
       setShowSuccess(true);
@@ -224,7 +214,9 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                   <option value="">Seleccionar categoría</option>
                   {commonCategories.map(cat => (
                     <option key={cat} value={cat}>
-                      {cat}
+                      {cat === 'productividad' ? 'Productividad' :
+                       cat === 'conducta_laboral' ? 'Conducta Laboral' :
+                       'Habilidades'}
                     </option>
                   ))}
                 </select>
@@ -242,7 +234,9 @@ const CrearCriterioModal: React.FC<CrearCriterioModalProps> = ({ show, onClose, 
                       <p className="font-medium text-gray-900">{form.name}</p>
                       <p className="text-sm text-gray-600">{form.description}</p>
                       <span className="text-xs bg-gray-200 px-2 py-1 rounded-md">
-                        {form.category}
+                        {form.category === 'productividad' ? 'Productividad' :
+                         form.category === 'conducta_laboral' ? 'Conducta Laboral' :
+                         'Habilidades'}
                       </span>
                     </div>
                     <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">

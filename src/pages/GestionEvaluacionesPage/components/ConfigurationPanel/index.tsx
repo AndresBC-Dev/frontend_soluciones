@@ -62,7 +62,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   onCloneTemplate,
   onGenerateEval,
   onDeleteTemplate,
-  onEditTemplate
+  onEditTemplate,
 }) => {
   const [showInactiveCriteria, setShowInactiveCriteria] = useState(false);
 
@@ -227,10 +227,10 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             <option value="todos">Todas las categorías</option>
             {categories.filter(cat => cat !== 'todos').map(category => (
               <option key={category} value={category}>
-                {category === 'productivity' && 'Productividad'}
-                {category === 'work_conduct' && 'Conducta Laboral'}
-                {category === 'skills' && 'Habilidades'}
-                {category !== 'productivity' && category !== 'work_conduct' && category !== 'skills' && category}
+                {category === 'productividad' ? 'Productividad' :
+                 category === 'conducta_laboral' ? 'Conducta Laboral' :
+                 category === 'habilidades' ? 'Habilidades' :
+                 category}
               </option>
             ))}
           </select>

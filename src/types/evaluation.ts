@@ -112,11 +112,12 @@ export interface CreateTemplateDTO {
   criteria: {
     criteriaId: number;
     weight: number;
-    category: 'productivity' | 'work_conduct' | 'skills';
+    category: 'productividad' | 'conducta_laboral' | 'habilidades';
   }[];
 }
 
 export interface CreateEvaluationsFromTemplateDTO {
   template_id: number;
   employee_ids: number[];
+  period_id: number;
 }

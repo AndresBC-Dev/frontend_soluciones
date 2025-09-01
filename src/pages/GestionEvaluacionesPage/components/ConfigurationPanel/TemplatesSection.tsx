@@ -25,6 +25,20 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   onDelete,
   onEdit,
 }) => {
+  // Función para obtener el nombre traducido de la categoría
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'productivity':
+        return 'Productividad';
+      case 'work_conduct':
+        return 'Conducta Laboral';
+      case 'skills':
+        return 'Habilidades';
+      default:
+        return category;
+    }
+  };
+
   return (
     <div className="space-y-3">
       {templates.length === 0 ? (
@@ -33,10 +47,12 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
         templates.map(template => {
           const isDeleting = deletingItems.has(template.id);
           const isCloning = cloningItems.has(template.id);
-          // Map criteria.criteriaId to Criteria objects
-          const templateCriteria = template.criteria
-            .map(criterion => criteria.find(c => c.id === criterion.criteriaId))
-            .filter((c): c is Criteria => c !== undefined);
+          // Verificar si criteria es un arreglo, si no, usar arreglo vacío
+          const templateCriteria = Array.isArray(template.criteria)
+            ? template.criteria
+                .map(criterion => criteria.find(c => c.id === criterion.criteriaId))
+                .filter((c): c is Criteria => c !== undefined)
+            : [];
 
           return (
             <div
@@ -63,18 +79,20 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                   )}
                   <div className="mt-2 text-sm text-gray-500">
                     <span>Criterios: {templateCriteria.length}</span>
-                    {templateCriteria.length > 0 && (
+                    {templateCriteria.length > 0 ? (
                       <div className="mt-1">
                         {template.criteria.map((c, idx) => {
                           const criterion = criteria.find(cr => cr.id === c.criteriaId);
                           if (!criterion) return null;
                           return (
                             <span key={idx} className="inline-block mr-2 text-xs">
-                              • {criterion.name} ({(c.weight * 100).toFixed(0)}%)
+                              • {criterion.name} ({(c.weight * 100).toFixed(0)}% - {getCategoryLabel(c.category)})
                             </span>
                           );
                         })}
                       </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Sin criterios asignados</p>
                     )}
                   </div>
                 </div>

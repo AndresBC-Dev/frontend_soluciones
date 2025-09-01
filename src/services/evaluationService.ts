@@ -319,7 +319,7 @@ export const getTemplates = async (): Promise<Template[]> => {
 
     const data = await handleResponse<Template[]>(response);
     console.log('✅ Templates loaded:', data);
-    return Array.isArray(data) ? data.map(t => ({ ...t, is_active: t.is_active ?? true, description: t.description })) : [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('❌ Error fetching templates:', error);
     throw error;
@@ -329,34 +329,15 @@ export const getTemplates = async (): Promise<Template[]> => {
 export const createTemplate = async (templateData: CreateTemplateDTO): Promise<Template> => {
   try {
     console.log('🔄 Creating template...', templateData);
-
-    const groupedCriteria = {
-      productivity: templateData.criteria
-        .filter(c => c.category === 'productivity')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-      work_conduct: templateData.criteria
-        .filter(c => c.category === 'work_conduct')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-      skills: templateData.criteria
-        .filter(c => c.category === 'skills')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-    };
-
-    const backendPayload = {
-      name: templateData.name,
-      description: templateData.description,
-      criteria: groupedCriteria,
-    };
-
     const response = await fetch(`${API_BASE_URL}/templates`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(backendPayload),
+      body: JSON.stringify(templateData),
     });
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template created:', data);
-    return { ...data, is_active: data.is_active ?? true, description: data.description };
+    return data;
   } catch (error) {
     console.error('❌ Error creating template:', error);
     throw error;
@@ -366,33 +347,15 @@ export const createTemplate = async (templateData: CreateTemplateDTO): Promise<T
 export const updateTemplate = async (id: number, templateData: CreateTemplateDTO): Promise<Template> => {
   try {
     console.log('🔄 Updating template...', id, templateData);
-    const groupedCriteria = {
-      productivity: templateData.criteria
-        .filter(c => c.category === 'productivity')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-      work_conduct: templateData.criteria
-        .filter(c => c.category === 'work_conduct')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-      skills: templateData.criteria
-        .filter(c => c.category === 'skills')
-        .map(c => ({ criteria_id: c.criteriaId, weight: c.weight })),
-    };
-
-    const backendPayload = {
-      name: templateData.name,
-      description: templateData.description,
-      criteria: groupedCriteria,
-    };
-
     const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(backendPayload),
+      body: JSON.stringify(templateData),
     });
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template updated:', data);
-    return { ...data, is_active: data.is_active ?? true, description: data.description };
+    return data;
   } catch (error) {
     console.error('❌ Error updating template:', error);
     throw error;
@@ -417,9 +380,8 @@ export const deleteTemplate = async (id: number): Promise<void> => {
 
 export const cloneTemplate = async (id: number, newName?: string): Promise<Template> => {
   try {
-    console.log('📋 Cloning template:', id, newName);
+    console.log('🔄 Cloning template...', id, newName);
     const body = newName ? JSON.stringify({ name: newName }) : undefined;
-
     const response = await fetch(`${API_BASE_URL}/templates/${id}/clone`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -428,7 +390,11 @@ export const cloneTemplate = async (id: number, newName?: string): Promise<Templ
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template cloned:', data);
-    return { ...data, is_active: data.is_active ?? true, description: data.description };
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      criteria: Array.isArray(data.criteria) ? data.criteria : [],
+    };
   } catch (error) {
     console.error('❌ Error cloning template:', error);
     throw error;

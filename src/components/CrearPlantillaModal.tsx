@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Loader2, Plus, Target, Trash2, Percent } from 'lucide-react';
-import type { Template, Criteria } from '../services/evaluationService';
 import { getCriteria, createTemplate } from '../services/evaluationService';
-import type { CreateTemplateDTO } from '../types/evaluation';
+import type { Template, Criteria, CreateTemplateDTO } from '../types/evaluation';
 
 interface CrearPlantillaModalProps {
   show: boolean;
@@ -16,18 +15,9 @@ interface PlantillaForm {
   selectedCriteria: {
     criteriaId: number;
     weight: number;
-    category: 'productivity' | 'work_conduct' | 'skills';
+    category: 'productividad' | 'conducta_laboral' | 'habilidades';
   }[];
 }
-
-const mapCategory = (cat: string): 'productivity' | 'work_conduct' | 'skills' => {
-  switch (cat) {
-    case 'productividad': return 'productivity';
-    case 'conducta_laboral': return 'work_conduct';
-    case 'habilidades': return 'skills';
-    default: return 'skills';
-  }
-};
 
 const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose, onCreated }) => {
   const [form, setForm] = useState<PlantillaForm>({
@@ -44,7 +34,6 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
   useEffect(() => {
     if (show) {
       loadCriteria();
-      // Reset form and error when modal is opened
       setForm({ name: '', description: '', selectedCriteria: [] });
       setError(null);
     }
@@ -78,7 +67,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
         {
           criteriaId: criteria.id,
           weight: criteria.weight ? Math.round(criteria.weight * 100) : 0,
-          category: mapCategory(criteria.category)
+          category: criteria.category
         }
       ]
     }));
@@ -101,7 +90,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
   };
 
   const getTotalWeightByCategory = () => {
-    const categories: { [key in 'productivity' | 'work_conduct' | 'skills']?: number } = {};
+    const categories: { [key in 'productividad' | 'conducta_laboral' | 'habilidades']?: number } = {};
     form.selectedCriteria.forEach(sc => {
       categories[sc.category] = (categories[sc.category] || 0) + sc.weight;
     });
@@ -109,10 +98,10 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
   };
 
   const normalizeWeights = () => {
-    const categories: { [key in 'productivity' | 'work_conduct' | 'skills']?: { criteriaId: number; weight: number; category: string }[] } = {
-      productivity: [],
-      work_conduct: [],
-      skills: []
+    const categories: { [key in 'productividad' | 'conducta_laboral' | 'habilidades']?: { criteriaId: number; weight: number; category: string }[] } = {
+      productividad: [],
+      conducta_laboral: [],
+      habilidades: []
     };
 
     form.selectedCriteria.forEach(sc => {
@@ -155,14 +144,14 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
 
     const weightsByCategory = getTotalWeightByCategory();
     const categoryErrors: string[] = [];
-    ['productivity', 'work_conduct', 'skills'].forEach(category => {
+    ['productividad', 'conducta_laboral', 'habilidades'].forEach(category => {
       if (weightsByCategory[category as keyof typeof weightsByCategory]) {
         const total = weightsByCategory[category as keyof typeof weightsByCategory] || 0;
         if (total !== 100) {
           const categoryName = {
-            productivity: 'Productividad',
-            work_conduct: 'Conducta Laboral',
-            skills: 'Habilidades'
+            productividad: 'Productividad',
+            conducta_laboral: 'Conducta Laboral',
+            habilidades: 'Habilidades'
           }[category];
           categoryErrors.push(`${categoryName} suma ${total}% en lugar de 100%`);
         }
@@ -188,6 +177,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
 
     try {
       setLoading(true);
+      console.log('🔄 Sending template to backend:', templateDTO);
       const result = await createTemplate(templateDTO);
       if (!result) {
         setError('Nombre existente');
@@ -312,8 +302,12 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                             className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg mb-2"
                           >
                             <div className="flex-1">
-                              <p className="font-medium text-sm">{criteria.description}</p>
-                              <p className="text-xs text-gray-500">{criteria.category}</p>
+                              <p className="font-medium text-sm">{criteria.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {criteria.category === 'productividad' ? 'Productividad' :
+                                 criteria.category === 'conducta_laboral' ? 'Conducta Laboral' :
+                                 'Habilidades'}
+                              </p>
                               <p className="text-xs text-purple-600">
                                 Peso sugerido: {criteria.weight ? Math.round(criteria.weight * 100) : 0}%
                               </p>
@@ -338,7 +332,10 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                     {form.selectedCriteria.length > 0 && (
                       <div className="text-sm">
                         <span className={`font-medium ${Object.values(getTotalWeightByCategory()).every(w => w === 100 || w === undefined) ? 'text-green-600' : 'text-red-600'}`}>
-                          Total por categoría: {Object.entries(getTotalWeightByCategory()).map(([cat, total]) => `${cat}: ${total || 0}%`).join(', ')}
+                          Total por categoría: {Object.entries(getTotalWeightByCategory()).map(([cat, total]) => 
+                            `${cat === 'productividad' ? 'Productividad' : 
+                               cat === 'conducta_laboral' ? 'Conducta Laboral' : 
+                               'Habilidades'}: ${total || 0}%`).join(', ')}
                         </span>
                         <button
                           type="button"
@@ -362,8 +359,12 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                           <div key={sc.criteriaId} className="p-3 bg-gray-50 rounded-lg mb-2">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex-1">
-                                <p className="font-medium text-sm">{criteria?.description}</p>
-                                <p className="text-xs text-gray-500">{criteria?.category}</p>
+                                <p className="font-medium text-sm">{criteria?.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {sc.category === 'productividad' ? 'Productividad' :
+                                   sc.category === 'conducta_laboral' ? 'Conducta Laboral' :
+                                   'Habilidades'}
+                                </p>
                               </div>
                               <button
                                 type="button"
@@ -420,7 +421,10 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                   {form.selectedCriteria.length} criterios configurados
                 </p>
                 <p className="text-xs text-purple-600">
-                  Pesos: {form.selectedCriteria.map(sc => `${sc.weight}% (${sc.category})`).join(', ')}
+                  Pesos: {form.selectedCriteria.map(sc => {
+                    const criteria = getCriteriaById(sc.criteriaId);
+                    return `${criteria?.name || 'Criterio'} (${sc.weight}% - ${sc.category === 'productividad' ? 'Productividad' : sc.category === 'conducta_laboral' ? 'Conducta Laboral' : 'Habilidades'})`;
+                  }).join(', ')}
                 </p>
               </div>
             </div>

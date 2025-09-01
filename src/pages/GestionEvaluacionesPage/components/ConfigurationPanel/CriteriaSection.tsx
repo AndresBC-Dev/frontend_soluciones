@@ -1,107 +1,83 @@
 import React from 'react';
-import { Edit, Trash2, RotateCcw } from 'lucide-react';
+import { Target, Edit, Trash2, RotateCcw } from 'lucide-react';
 import type { Criteria } from '../../../../types/evaluation';
 
 interface CriteriaSectionProps {
   criteria: Criteria[];
-  searchTerm: string;
-  selectedCategory: string;
-  showInactiveCriteria: boolean;
   deletingItems: Set<number>;
   onEdit: (criteria: Criteria) => void;
   onDelete: (criteria: Criteria) => void;
   onReactivate: (criteria: Criteria) => void;
-  onToggleShowInactive?: () => void;
 }
 
 const CriteriaSection: React.FC<CriteriaSectionProps> = ({
   criteria,
-  searchTerm,
-  selectedCategory,
-  showInactiveCriteria,
   deletingItems,
   onEdit,
   onDelete,
   onReactivate,
-  onToggleShowInactive,
 }) => {
-  const filteredCriteria = criteria
-    .filter(c => showInactiveCriteria || c.is_active)
-    .filter(c => selectedCategory === 'todos' || c.category === selectedCategory)
-    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'productivity':
+        return 'bg-blue-100 text-blue-700';
+      case 'work_conduct':
+        return 'bg-green-100 text-green-700';
+      case 'skills':
+        return 'bg-purple-100 text-purple-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
 
-  const inactiveCriteriaCount = criteria.filter(c => !c.is_active).length;
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'productivity':
+        return 'Productividad';
+      case 'work_conduct':
+        return 'Conducta Laboral';
+      case 'skills':
+        return 'Habilidades';
+      default:
+        return category;
+    }
+  };
 
   return (
     <div className="space-y-3">
-      {onToggleShowInactive && (
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-sm text-gray-500">
-            {inactiveCriteriaCount > 0
-              ? `${inactiveCriteriaCount} criterio(s) inactivo(s) disponibles`
-              : 'No hay criterios inactivos'}
-          </p>
-          <button
-            onClick={onToggleShowInactive}
-            className="text-sm text-blue-500 hover:underline"
-          >
-            {showInactiveCriteria
-              ? 'Ocultar criterios inactivos'
-              : 'Mostrar criterios inactivos'}
-          </button>
-        </div>
-      )}
-      {filteredCriteria.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">
-            {criteria.length === 0
-              ? 'No hay criterios disponibles en el sistema'
-              : showInactiveCriteria
-                ? searchTerm
-                  ? `No hay criterios que coincidan con "${searchTerm}"`
-                  : selectedCategory !== 'todos'
-                    ? `No hay criterios en la categoría "${selectedCategory}"`
-                    : 'No hay criterios disponibles'
-                : searchTerm
-                  ? `No hay criterios activos que coincidan con "${searchTerm}"`
-                  : selectedCategory !== 'todos'
-                    ? `No hay criterios activos en la categoría "${selectedCategory}"`
-                    : 'No hay criterios activos disponibles'}
-          </p>
-          {criteria.length > 0 && !showInactiveCriteria && (
-            <p className="text-sm text-gray-400 mt-1">
-              Hay {inactiveCriteriaCount} criterio(s) inactivo(s). Activa "Mostrar criterios inactivos" para verlos.
-            </p>
-          )}
-        </div>
+      {criteria.length === 0 ? (
+        <p className="text-gray-500 text-center">No hay criterios disponibles</p>
       ) : (
-        filteredCriteria.map(criterion => {
+        criteria.map(criterion => {
           const isDeleting = deletingItems.has(criterion.id);
           return (
             <div
               key={criterion.id}
               className={`rounded-lg p-4 flex justify-between items-center ${
-                criterion.is_active ? 'bg-green-50' : 'bg-gray-200'
+                criterion.is_active === false
+                  ? 'bg-gray-50 border border-gray-200 opacity-75'
+                  : 'bg-white border border-gray-200 hover:shadow-sm'
               }`}
             >
-              <div>
-                <h4 className="font-semibold text-gray-900">
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Target className="w-4 h-4 text-orange-500" />
                   {criterion.name}
-                  <span
-                    className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                      criterion.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}
-                  >
-                    {criterion.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
+                  {criterion.is_active === false && (
+                    <span className="ml-2 text-xs text-gray-500 italic">(Inactivo)</span>
+                  )}
                 </h4>
-                <p className="text-sm text-gray-600">{criterion.description}</p>
-                <p className="text-sm text-gray-600">
-                  Categoría: {criterion.category}
-                </p>
-                <p className="text-sm text-gray-500">Peso: {criterion.weight * 100}%</p>
+                {criterion.description && (
+                  <p className="text-sm text-gray-600 mt-1">{criterion.description}</p>
+                )}
+                <div className="flex items-center gap-3 mt-2">
+                  <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(criterion.category)}`}>
+                    {getCategoryLabel(criterion.category)}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Peso: {(criterion.weight * 100).toFixed(0)}%
+                  </span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -111,7 +87,7 @@ const CriteriaSection: React.FC<CriteriaSectionProps> = ({
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                {criterion.is_active ? (
+                {criterion.is_active !== false ? (
                   <button
                     onClick={() => onDelete(criterion)}
                     disabled={isDeleting || !(criterion.can_delete ?? true)}

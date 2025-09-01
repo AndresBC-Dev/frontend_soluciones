@@ -1,30 +1,37 @@
-import type { Dispatch, SetStateAction } from 'react';
-import { Search, Clock, Target } from 'lucide-react';
-import type { Period, Criteria } from '../../../../types/evaluation';
+import React, { useState, useMemo } from 'react';
+import { Search, Calendar, Target, FileText } from 'lucide-react';
 import PeriodsSection from './PeriodsSection';
 import CriteriaSection from './CriteriaSection';
+import TemplatesSection from './TemplatesSection';
+import type { Period, Criteria, Template } from '../../../../types/evaluation';
 
 interface ConfigurationPanelProps {
-  activeTab: 'periodos' | 'criterios';
-  setActiveTab: Dispatch<SetStateAction<'periodos' | 'criterios'>>;
+  activeTab: 'periodos' | 'criterios' | 'plantillas';
+  setActiveTab: (tab: 'periodos' | 'criterios' | 'plantillas') => void;
   searchTerm: string;
-  setSearchTerm: Dispatch<SetStateAction<string>>;
-  selectedCategory: 'todos' | 'productivity' | 'work_conduct' | 'skills';
-  setSelectedCategory: Dispatch<SetStateAction<'todos' | 'productivity' | 'work_conduct' | 'skills'>>;
-  categories: readonly ('todos' | 'productivity' | 'work_conduct' | 'skills')[];
+  setSearchTerm: (term: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (category: string) => void;
+  categories: string[];
   showInactivePeriods: boolean;
-  setShowInactivePeriods: Dispatch<SetStateAction<boolean>>;
-  showInactiveCriteria: boolean;
-  setShowInactiveCriteria: Dispatch<SetStateAction<boolean>>;
+  setShowInactivePeriods: (show: boolean) => void;
   periods: Period[];
   criteria: Criteria[];
+  templates: Template[];
   deletingItems: Set<number>;
+  cloningItems: Set<number>;
+  onCreatePeriod: () => void;
+  onCreateCriteria: () => void;
+  onCreateTemplate: () => void;
   onEditPeriod: (period: Period) => void;
   onDeletePeriod: (period: Period) => void;
   onEditCriteria: (criteria: Criteria) => void;
   onDeleteCriteria: (criteria: Criteria) => void;
-  onReactivateCriteria: (criteria: Criteria) => void;
-  onCreateCriteria: () => void;
+  onViewTemplate: (template: Template) => void;
+  onCloneTemplate: (template: Template) => void;
+  onGenerateEval: (template: Template) => void;
+  onDeleteTemplate: (template: Template) => void;
+  onEditTemplate: (template: Template) => void;
 }
 
 const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
@@ -37,49 +44,110 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   categories,
   showInactivePeriods,
   setShowInactivePeriods,
-  showInactiveCriteria,
-  setShowInactiveCriteria,
   periods,
   criteria,
+  templates,
   deletingItems,
+  cloningItems,
+  onCreatePeriod,
+  onCreateCriteria,
+  onCreateTemplate,
   onEditPeriod,
   onDeletePeriod,
   onEditCriteria,
   onDeleteCriteria,
-  onReactivateCriteria,
-  onCreateCriteria,
+  onViewTemplate,
+  onCloneTemplate,
+  onGenerateEval,
+  onDeleteTemplate,
+  onEditTemplate
 }) => {
+  const [showInactiveCriteria, setShowInactiveCriteria] = useState(false);
+
   const tabs = [
-    { key: 'periodos' as const, label: 'Períodos', icon: Clock },
-    { key: 'criterios' as const, label: 'Criterios', icon: Target, action: onCreateCriteria },
+    { key: 'periodos' as const, label: 'Períodos', icon: Calendar },
+    { key: 'criterios' as const, label: 'Criterios', icon: Target },
+    { key: 'plantillas' as const, label: 'Plantillas', icon: FileText },
   ];
+
+  const filteredPeriods = useMemo(() => {
+    let filtered = periods;
+    if (!showInactivePeriods) {
+      filtered = filtered.filter(p => p.is_active);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [periods, showInactivePeriods, searchTerm]);
+
+  const filteredCriteria = useMemo(() => {
+    let filtered = criteria;
+    if (!showInactiveCriteria) {
+      filtered = filtered.filter(c => c.is_active !== false);
+    }
+    if (selectedCategory !== 'todos') {
+      filtered = filtered.filter(c => c.category === selectedCategory);
+    }
+    if (searchTerm) {
+      filtered = filtered.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [criteria, showInactiveCriteria, selectedCategory, searchTerm]);
+
+  const filteredTemplates = useMemo(() => {
+    let filtered = templates;
+    if (searchTerm) {
+      filtered = filtered.filter(t =>
+        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return filtered;
+  }, [templates, searchTerm]);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'periodos':
         return (
           <PeriodsSection
-            periods={periods}
-            searchTerm={searchTerm}
-            showInactivePeriods={showInactivePeriods}
+            periods={filteredPeriods}
             deletingItems={deletingItems}
             onEdit={onEditPeriod}
             onDelete={onDeletePeriod}
-            onToggleShowExpired={() => setShowInactivePeriods(!showInactivePeriods)}
+            onCreatePeriod={onCreatePeriod}
           />
         );
       case 'criterios':
         return (
           <CriteriaSection
-            criteria={criteria}
-            searchTerm={searchTerm}
-            selectedCategory={selectedCategory}
-            showInactiveCriteria={showInactiveCriteria}
+            criteria={filteredCriteria}
+            showInactive={showInactiveCriteria}
             deletingItems={deletingItems}
             onEdit={onEditCriteria}
             onDelete={onDeleteCriteria}
-            onReactivate={onReactivateCriteria}
+            onReactivate={(criteria) => console.log('Reactivate:', criteria)}
             onToggleShowInactive={() => setShowInactiveCriteria(!showInactiveCriteria)}
+          />
+        );
+      case 'plantillas':
+        return (
+          <TemplatesSection
+            templates={filteredTemplates}
+            criteria={criteria}
+            deletingItems={deletingItems}
+            cloningItems={cloningItems}
+            onView={onViewTemplate}
+            onEdit={onEditTemplate}
+            onClone={onCloneTemplate}
+            onGenerateEval={onGenerateEval}
+            onDelete={onDeleteTemplate}
           />
         );
       default:
@@ -91,14 +159,32 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex-1 flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">Configuración</h2>
-        {activeTab === 'criterios' && (
-          <button
-            onClick={onCreateCriteria}
-            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
-          >
-            <span className="text-sm font-medium">Crear Criterio</span>
-          </button>
-        )}
+        <div className="flex gap-2">
+          {activeTab === 'periodos' && (
+            <button
+              onClick={onCreatePeriod}
+              className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+            >
+              Crear Período
+            </button>
+          )}
+          {activeTab === 'criterios' && (
+            <button
+              onClick={onCreateCriteria}
+              className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+            >
+              Crear Criterio
+            </button>
+          )}
+          {activeTab === 'plantillas' && (
+            <button
+              onClick={onCreateTemplate}
+              className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+            >
+              Crear Plantilla
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
@@ -136,13 +222,16 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         <div className="mb-4 space-y-4">
           <select
             value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value as 'todos' | 'productivity' | 'work_conduct' | 'skills')}
+            onChange={e => setSelectedCategory(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="todos">Todas las categorías</option>
             {categories.filter(cat => cat !== 'todos').map(category => (
               <option key={category} value={category}>
-                {category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ')}
+                {category === 'productivity' && 'Productividad'}
+                {category === 'work_conduct' && 'Conducta Laboral'}
+                {category === 'skills' && 'Habilidades'}
+                {category !== 'productivity' && category !== 'work_conduct' && category !== 'skills' && category}
               </option>
             ))}
           </select>

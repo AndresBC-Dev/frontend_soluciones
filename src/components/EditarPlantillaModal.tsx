@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Loader2, Plus, Target, Trash2, Percent, Save, Filter } from 'lucide-react';
 import { getCriteria, updateTemplate } from '../services/evaluationService';
-import type { TemplateListItem, Criteria, CreateTemplateDTO, TemplateDetail } from '../types/evaluation';
+import type { TemplateListItem, Criteria, CreateTemplateDTO, TemplateCriteriaItem } from '../types/evaluation';
 
 interface EditarPlantillaModalProps {
   show: boolean;
   template: TemplateListItem | null;
   onClose: () => void;
-  onUpdated: (template: TemplateListItem) => void;
+  onUpdated: (updatedTemplate: TemplateListItem) => void;
 }
 
 interface PlantillaForm {
@@ -39,6 +39,7 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
     description: '',
     selectedCriteria: [],
   });
+
   const [availableCriteria, setAvailableCriteria] = useState<Criteria[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCriteria, setLoadingCriteria] = useState(false);
@@ -48,15 +49,30 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
   useEffect(() => {
     if (show && template) {
       loadCriteria();
-      // Initialize form with template data
+      const selectedCriteria = [
+        ...((template as any).criteria?.productivity || []).map((c: any) => ({
+          criteriaId: c.CriteriaID, // Cambia a c.criteria_id si evaluation.ts usa criteria_id
+          weight: c.weight,
+          category: 'productividad' as const,
+        })),
+        ...((template as any).criteria?.work_conduct || []).map((c: any) => ({
+          criteriaId: c.CriteriaID, // Cambia a c.criteria_id si evaluation.ts usa criteria_id
+          weight: c.weight,
+          category: 'conducta_laboral' as const,
+        })),
+        ...((template as any).criteria?.skills || []).map((c: any) => ({
+          criteriaId: c.CriteriaID, // Cambia a c.criteria_id si evaluation.ts usa criteria_id
+          weight: c.weight,
+          category: 'habilidades' as const,
+        })),
+      ];
       setForm({
         name: template.name,
         description: template.description || '',
-        selectedCriteria: [], // Will be populated after fetching template details
+        selectedCriteria,
       });
       setError(null);
       setCategoryFilter('todos');
-      loadTemplateDetails();
     }
   }, [show, template]);
 
@@ -70,34 +86,6 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
       setError('Error al cargar los criterios disponibles');
     } finally {
       setLoadingCriteria(false);
-    }
-  };
-
-  const loadTemplateDetails = async () => {
-    if (!template?.id) return;
-    try {
-      const templateDetail = await import('../services/evaluationService').then(m => m.getTemplateById(template.id));
-      const selectedCriteria = [
-        ...templateDetail.criteria.productivity.map(c => ({
-          criteriaId: c.criteria_id,
-          weight: c.weight,
-          category: 'productividad' as const,
-        })),
-        ...templateDetail.criteria.work_conduct.map(c => ({
-          criteriaId: c.criteria_id,
-          weight: c.weight,
-          category: 'conducta_laboral' as const,
-        })),
-        ...templateDetail.criteria.skills.map(c => ({
-          criteriaId: c.criteria_id,
-          weight: c.weight,
-          category: 'habilidades' as const,
-        })),
-      ];
-      setForm(prev => ({ ...prev, selectedCriteria }));
-    } catch (err) {
-      console.error('Error loading template details:', err);
-      setError('Error al cargar los detalles de la plantilla');
     }
   };
 
@@ -154,17 +142,10 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
     const count = categoryItems.length;
     if (count === 0) return;
 
-    const baseWeight = Math.floor(100 / count);
-    const remainder = 100 - (baseWeight * count);
-
-    const updatedCriteria = form.selectedCriteria.map((criteria, index) => {
+    const baseWeight = 100 / count;
+    const updatedCriteria = form.selectedCriteria.map((criteria) => {
       if (criteria.category !== category) return criteria;
-
-      const categoryIndex = categoryItems.findIndex(item => item.criteriaId === criteria.criteriaId);
-      const isLastInCategory = categoryIndex === count - 1;
-      const weight = isLastInCategory ? baseWeight + remainder : baseWeight;
-
-      return { ...criteria, weight };
+      return { ...criteria, weight: baseWeight };
     });
 
     setForm(prev => ({
@@ -175,13 +156,14 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
 
   const validateCategoryWeights = (): { valid: boolean; message?: string } => {
     const usedCategories = getUsedCategories();
+    const tolerance = 0.01;
 
     for (const category of usedCategories) {
       const total = getTotalWeightByCategory(category);
-      if (Math.abs(total - 100) > 0.01) {
+      if (Math.abs(total - 100) > tolerance) {
         return {
           valid: false,
-          message: `Los criterios de ${mapCategory(category)} deben sumar 100% (actual: ${total}%)`,
+          message: `Los criterios de ${mapCategory(category)} deben sumar 100% (actual: ${total.toFixed(2)}%)`,
         };
       }
     }
@@ -241,30 +223,44 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
 
     try {
       setLoading(true);
-      if (!template?.id) throw new Error('No template ID provided');
-      const result = await updateTemplate(template.id, templateDTO);
-      const templateListItem: TemplateListItem = {
+      console.log('🔄 Updating template:', templateDTO);
+      const result = await updateTemplate(template!.id, templateDTO);
+      const updatedTemplate: TemplateListItem = {
         id: result.id,
         name: result.name,
         description: result.description,
         is_active: result.is_active,
         criteria_count: 'criteria' in result
-          ? Object.values(result.criteria).reduce((sum, arr) => sum + arr.length, 0)
-          : result.criteria_count || 0,
+          ? Object.values(result.criteria).reduce((sum, arr: TemplateCriteriaItem[]) => sum + arr.length, 0)
+          : (result.criteria_count as number) || 0,
         categories_used: 'criteria' in result
-          ? Object.values(result.criteria).filter(arr => arr.length > 0).length
-          : result.categories_used || 0,
+          ? Object.values(result.criteria).filter((arr: TemplateCriteriaItem[]) => arr.length > 0).length
+          : (result.categories_used as number) || 0,
         created_at: result.created_at,
         updated_at: result.updated_at,
       };
-      onUpdated(templateListItem);
+      onUpdated(updatedTemplate);
       onClose();
     } catch (err: any) {
       let errorMessage = 'Error al actualizar la plantilla.';
-      if (err.message?.includes('validación de pesos')) {
-        errorMessage = err.message;
-      } else if (err.message?.includes('nombre')) {
-        errorMessage = 'Ya existe una plantilla con ese nombre';
+      const errStr = err.message || '';
+      if (errStr.includes('HTTP')) {
+        try {
+          const status = errStr.split('HTTP ')[1].split(': ')[0];
+          const bodyStr = errStr.split(`${status}: `)[1];
+          const parsed = JSON.parse(bodyStr);
+          if (parsed.details) {
+            errorMessage = parsed.details;
+          } else if (parsed.message) {
+            errorMessage = parsed.message;
+          } else if (parsed.error) {
+            errorMessage = parsed.error;
+          }
+        } catch (parseErr) {
+          console.error('Error parsing backend error:', parseErr);
+        }
+      } else if (errStr.includes('validación de pesos')) {
+        errorMessage = errStr;
       }
       setError(errorMessage);
     } finally {
@@ -367,7 +363,7 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
                                 isValid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              Total: {categoryTotal}%
+                              Total: {categoryTotal.toFixed(2)}%
                             </span>
                             <button
                               type="button"
@@ -401,11 +397,12 @@ const EditarPlantillaModal: React.FC<EditarPlantillaModalProps> = ({ show, templ
                                     type="number"
                                     value={sc.weight}
                                     onChange={(e) =>
-                                      updateCriteriaWeight(sc.criteriaId, parseInt(e.target.value) || 0)
+                                      updateCriteriaWeight(sc.criteriaId, parseFloat(e.target.value) || 0)
                                     }
                                     className="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:ring-1 focus:ring-purple-500"
-                                    min="1"
+                                    min="0.01"
                                     max="100"
+                                    step="0.01"
                                   />
                                   <Percent size={14} className="text-gray-400" />
                                 </div>

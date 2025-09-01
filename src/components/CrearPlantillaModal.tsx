@@ -181,20 +181,20 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
         productivity: form.selectedCriteria
           .filter(sc => sc.category === 'productividad')
           .map(sc => ({
-            criteria_id: sc.criteriaId,
-            weight: sc.weight,
+            CriteriaID: sc.criteriaId,
+            weight: Number(sc.weight.toFixed(2)),
           })),
         work_conduct: form.selectedCriteria
           .filter(sc => sc.category === 'conducta_laboral')
           .map(sc => ({
-            criteria_id: sc.criteriaId,
-            weight: sc.weight,
+            CriteriaID: sc.criteriaId,
+            weight: Number(sc.weight.toFixed(2)),
           })),
         skills: form.selectedCriteria
           .filter(sc => sc.category === 'habilidades')
           .map(sc => ({
-            criteria_id: sc.criteriaId,
-            weight: sc.weight,
+            CriteriaID: sc.criteriaId,
+            weight: Number(sc.weight.toFixed(2)),
           })),
       },
     };

@@ -12,7 +12,7 @@ import {
   deleteEvaluation,
   cloneTemplate,
 } from '../../services/evaluationService';
-import type { Period, Criteria, TemplateListItem, Evaluation, Stats, TemplateDetail, Template } from '../../types/evaluation';
+import type { Period, Criteria, TemplateListItem, Evaluation, Stats, Template } from '../../types/evaluation';
 import HeaderSection from './components/HeaderSection';
 import ConfigurationPanel from './components/ConfigurationPanel';
 import EvaluationsPanel from './components/EvaluationsPanel';
@@ -626,6 +626,7 @@ const GestionEvaluacionesPage: React.FC = () => {
           <div className="col-span-7 flex flex-col">
             <EvaluationsPanel
               evaluations={evaluations}
+              templates={templates}
               deletingItems={deletingItems}
               onCreateEvaluation={() => setShowCrearEvaluacionModal(true)}
               onViewEvaluation={handleViewEvaluation}

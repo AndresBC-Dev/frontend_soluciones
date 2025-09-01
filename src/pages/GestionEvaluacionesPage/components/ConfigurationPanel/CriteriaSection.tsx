@@ -19,11 +19,11 @@ const CriteriaSection: React.FC<CriteriaSectionProps> = ({
 }) => {
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'productivity':
+      case 'productividad':
         return 'bg-blue-100 text-blue-700';
-      case 'work_conduct':
+      case 'conducta_laboral':
         return 'bg-green-100 text-green-700';
-      case 'skills':
+      case 'habilidades':
         return 'bg-purple-100 text-purple-700';
       default:
         return 'bg-gray-100 text-gray-700';
@@ -32,11 +32,11 @@ const CriteriaSection: React.FC<CriteriaSectionProps> = ({
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
-      case 'productivity':
+      case 'productividad':
         return 'Productividad';
-      case 'work_conduct':
+      case 'conducta_laboral':
         return 'Conducta Laboral';
-      case 'skills':
+      case 'habilidades':
         return 'Habilidades';
       default:
         return category;
@@ -73,9 +73,6 @@ const CriteriaSection: React.FC<CriteriaSectionProps> = ({
                 <div className="flex items-center gap-3 mt-2">
                   <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(criterion.category)}`}>
                     {getCategoryLabel(criterion.category)}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Peso: {(criterion.weight * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>

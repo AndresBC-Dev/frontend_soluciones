@@ -49,13 +49,10 @@ const VerPlantillaModal: React.FC<VerPlantillaModalProps> = ({
   const getCategoryLabel = (category: string) => {
     switch (category) {
       case 'productividad':
-      case 'productivity':
         return 'Productividad';
       case 'conducta_laboral':
-      case 'work_conduct':
         return 'Conducta Laboral';
       case 'habilidades':
-      case 'skills':
         return 'Habilidades';
       default:
         return category;
@@ -238,19 +235,19 @@ const CategorySection: React.FC<{
               isValid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
             }`}
           >
-            Total: {categoryTotal}%
+            Total: {categoryTotal.toFixed(2)}%
           </span>
         </div>
       </div>
       <div className="divide-y divide-gray-100">
         {criteria.map((criteriaItem, idx) => {
-          const info = getCriteriaInfo(criteriaItem.criteria_id);
+          const info = getCriteriaInfo(criteriaItem.CriteriaId);
           return (
             <div key={idx} className="px-4 py-3 hover:bg-gray-50 transition-colors">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <p className="font-medium text-sm text-gray-800">
-                    {info?.name || criteriaItem.criteria?.name || `Criterio ID: ${criteriaItem.criteria_id}`}
+                    {info?.name || criteriaItem.criteria?.name || `Criterio ID: ${criteriaItem.CriteriaId}`}
                   </p>
                   {(info?.description || criteriaItem.criteria?.description) && (
                     <p className="text-xs text-gray-500 mt-1">
@@ -259,7 +256,7 @@ const CategorySection: React.FC<{
                   )}
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-sm text-gray-700">{criteriaItem.weight}%</span>
+                  <span className="text-sm text-gray-700">{criteriaItem.weight.toFixed(2)}%</span>
                   <Percent size={14} className="text-gray-400" />
                 </div>
               </div>

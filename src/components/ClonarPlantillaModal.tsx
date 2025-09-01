@@ -15,30 +15,37 @@ const ClonarPlantillaModal: React.FC<ClonarPlantillaModalProps> = ({ show, onClo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Inside CrearPlantillaModal.tsx
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-  setLoading(true);
-  setError(null);
-
-  try {
-    console.log('🔄 Sending template to backend:', template);
-    const createdTemplate = await createTemplate(template);
-    console.log('✅ Template created:', createdTemplate);
-    onCreated(toTemplateListItem(createdTemplate));
-  } catch (err: any) {
-    console.error('❌ Error creating template:', err);
-    if (err.message.includes('ya existe una plantilla con ese nombre')) {
-      setError('Ya existe una plantilla con ese nombre. Por favor, elige un nombre diferente.');
-    } else {
-      setError('Error al crear la plantilla. Por favor, intenta nuevamente.');
+    if (!template?.id) {
+      setError('No se proporcionó una plantilla válida');
+      return;
     }
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      setLoading(true);
+      console.log('🔄 Cloning template:', template.id, newName || undefined);
+      const result = await cloneTemplate(template.id, newName || undefined);
+      onCloned(result);
+    } catch (err: any) {
+      let errorMessage = 'Error al clonar la plantilla. Por favor, intenta de nuevo.';
+      if (typeof err.message === 'string') {
+        const match = err.message.match(/HTTP \d+:\s*(.*)/);
+        if (match && match[1]) {
+          try {
+            const responseJson = JSON.parse(match[1]);
+            errorMessage = responseJson.error || responseJson.details || errorMessage;
+          } catch (parseErr) {
+            // No hacer nada si no se puede parsear
+          }
+        }
+      }
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleClose = () => {
     if (loading) return;

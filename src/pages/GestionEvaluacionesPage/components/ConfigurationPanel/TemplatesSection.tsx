@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Eye, Copy, Trash2, Edit } from 'lucide-react';
-import type { Template, Criteria } from '../../../../types/evaluation';
+import type { Template, Criteria, TemplateDetail, TemplateListItem, TemplateCriteriaItem } from '../../../../types/evaluation';
 
 interface TemplatesSectionProps {
   templates: Template[];
@@ -14,6 +14,14 @@ interface TemplatesSectionProps {
   onEdit: (template: Template) => void;
 }
 
+const isTemplateDetail = (template: Template): template is TemplateDetail => {
+  return 'criteria' in template && typeof template.criteria === 'object';
+};
+
+const isTemplateListItem = (template: Template): template is TemplateListItem => {
+  return 'criteria_count' in template;
+};
+
 const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   templates,
   criteria,
@@ -25,14 +33,13 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
   onDelete,
   onEdit,
 }) => {
-  // Función para obtener el nombre traducido de la categoría
   const getCategoryLabel = (category: string) => {
     switch (category) {
-      case 'productivity':
+      case 'productividad':
         return 'Productividad';
-      case 'work_conduct':
+      case 'conducta_laboral':
         return 'Conducta Laboral';
-      case 'skills':
+      case 'habilidades':
         return 'Habilidades';
       default:
         return category;
@@ -47,12 +54,21 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
         templates.map(template => {
           const isDeleting = deletingItems.has(template.id);
           const isCloning = cloningItems.has(template.id);
-          // Verificar si criteria es un arreglo, si no, usar arreglo vacío
-          const templateCriteria = Array.isArray(template.criteria)
-            ? template.criteria
-                .map(criterion => criteria.find(c => c.id === criterion.criteriaId))
-                .filter((c): c is Criteria => c !== undefined)
-            : [];
+
+          let allCriteria: TemplateCriteriaItem[] = [];
+          if (isTemplateDetail(template)) {
+            allCriteria = [
+              ...template.criteria.productivity,
+              ...template.criteria.work_conduct,
+              ...template.criteria.skills,
+            ];
+          }
+
+          const templateCriteria = allCriteria
+            .map(c => criteria.find(cr => cr.id === c.CriteriaId))
+            .filter((c): c is Criteria => c !== undefined);
+
+          const criteriaCount = isTemplateListItem(template) ? template.criteria_count : allCriteria.length;
 
           return (
             <div
@@ -78,19 +94,23 @@ const TemplatesSection: React.FC<TemplatesSectionProps> = ({
                     <p className="text-sm text-gray-600 mt-1">{template.description}</p>
                   )}
                   <div className="mt-2 text-sm text-gray-500">
-                    <span>Criterios: {templateCriteria.length}</span>
-                    {templateCriteria.length > 0 ? (
+                    <span>Criterios: {criteriaCount || 0}</span>
+                    {allCriteria.length > 0 ? (
                       <div className="mt-1">
-                        {template.criteria.map((c, idx) => {
-                          const criterion = criteria.find(cr => cr.id === c.criteriaId);
+                        {allCriteria.map((c: TemplateCriteriaItem) => {
+                          const criterion = criteria.find(cr => cr.id === c.CriteriaId);
                           if (!criterion) return null;
                           return (
-                            <span key={idx} className="inline-block mr-2 text-xs">
-                              • {criterion.name} ({(c.weight * 100).toFixed(0)}% - {getCategoryLabel(c.category)})
+                            <span key={c.CriteriaId} className="inline-block mr-2 text-xs">
+                              • {criterion.name} ({(c.weight * 100).toFixed(2)}% - {getCategoryLabel(c.category || criterion.category)})
                             </span>
                           );
                         })}
                       </div>
+                    ) : criteriaCount > 0 ? (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {criteriaCount} criterios asignados (detalles no disponibles)
+                      </p>
                     ) : (
                       <p className="text-xs text-gray-500 mt-1">Sin criterios asignados</p>
                     )}

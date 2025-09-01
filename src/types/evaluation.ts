@@ -48,7 +48,7 @@ export interface TemplateListItem {
 // Criterio dentro de una plantilla
 export interface TemplateCriteriaItem {
   id?: number;
-  criteria_id: number;
+  CriteriaId: number;
   weight: number;
   category?: string;
   criteria?: {

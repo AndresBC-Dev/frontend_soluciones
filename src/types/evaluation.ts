@@ -110,10 +110,10 @@ export interface CreateTemplateDTO {
   name: string;
   description?: string;
   criteria: {
-    criteriaId: number;
-    weight: number;
-    category: 'productividad' | 'conducta_laboral' | 'habilidades';
-  }[];
+    productivity: { criteria_id: number; weight: number }[];
+    work_conduct: { criteria_id: number; weight: number }[];
+    skills: { criteria_id: number; weight: number }[];
+  };
 }
 
 export interface CreateEvaluationsFromTemplateDTO {

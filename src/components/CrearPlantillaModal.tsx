@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileCheck, X, Loader2, Plus, Target, Trash2, Percent } from 'lucide-react';
+import { FileCheck, X, Loader2, Plus, Target, Trash2, Percent, Save } from 'lucide-react';
 import { getCriteria, createTemplate } from '../services/evaluationService';
-import type { Template, Criteria, CreateTemplateDTO } from '../types/evaluation';
+import type { Template, Criteria } from '../services/evaluationService';
+import type { CreateTemplateDTO } from '../types/evaluation';
 
 interface CrearPlantillaModalProps {
   show: boolean;
@@ -18,6 +19,19 @@ interface PlantillaForm {
     category: 'productividad' | 'conducta_laboral' | 'habilidades';
   }[];
 }
+
+const mapCategory = (cat: string): string => {
+  switch (cat) {
+    case 'productividad':
+      return 'Productividad';
+    case 'conducta_laboral':
+      return 'Conducta Laboral';
+    case 'habilidades':
+      return 'Habilidades';
+    default:
+      return cat;
+  }
+};
 
 const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose, onCreated }) => {
   const [form, setForm] = useState<PlantillaForm>({
@@ -67,16 +81,16 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
         {
           criteriaId: criteria.id,
           weight: criteria.weight ? Math.round(criteria.weight * 100) : 0,
-          category: criteria.category
-        }
-      ]
+          category: criteria.category as 'productividad' | 'conducta_laboral' | 'habilidades',
+        },
+      ],
     }));
   };
 
   const removeCriteria = (criteriaId: number) => {
     setForm(prev => ({
       ...prev,
-      selectedCriteria: prev.selectedCriteria.filter(sc => sc.criteriaId !== criteriaId)
+      selectedCriteria: prev.selectedCriteria.filter(sc => sc.criteriaId !== criteriaId),
     }));
   };
 
@@ -85,47 +99,27 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
       ...prev,
       selectedCriteria: prev.selectedCriteria.map(sc =>
         sc.criteriaId === criteriaId ? { ...sc, weight } : sc
-      )
+      ),
     }));
   };
 
-  const getTotalWeightByCategory = () => {
-    const categories: { [key in 'productividad' | 'conducta_laboral' | 'habilidades']?: number } = {};
-    form.selectedCriteria.forEach(sc => {
-      categories[sc.category] = (categories[sc.category] || 0) + sc.weight;
-    });
-    return categories;
+  const getTotalWeight = () => {
+    return form.selectedCriteria.reduce((sum, sc) => sum + sc.weight, 0);
   };
 
   const normalizeWeights = () => {
-    const categories: { [key in 'productividad' | 'conducta_laboral' | 'habilidades']?: { criteriaId: number; weight: number; category: string }[] } = {
-      productividad: [],
-      conducta_laboral: [],
-      habilidades: []
-    };
+    const count = form.selectedCriteria.length;
+    if (count === 0) return;
 
-    form.selectedCriteria.forEach(sc => {
-      categories[sc.category]?.push(sc);
-    });
-
-    Object.keys(categories).forEach((category) => {
-      const criteriaList = categories[category as keyof typeof categories];
-      if (!criteriaList || criteriaList.length === 0) return;
-
-      const count = criteriaList.length;
-      const baseWeight = Math.floor(100 / count);
-      criteriaList.forEach((sc, index) => {
-        sc.weight = baseWeight;
-        if (index === count - 1) {
-          const total = criteriaList.reduce((sum, c) => sum + c.weight, 0);
-          sc.weight += 100 - total;
-        }
-      });
-    });
+    const baseWeight = Math.floor(100 / count);
+    const updatedCriteria = form.selectedCriteria.map((sc, index) => ({
+      ...sc,
+      weight: index === count - 1 ? baseWeight + (100 - baseWeight * count) : baseWeight,
+    }));
 
     setForm(prev => ({
       ...prev,
-      selectedCriteria: Object.values(categories).flat() as PlantillaForm['selectedCriteria']
+      selectedCriteria: updatedCriteria,
     }));
   };
 
@@ -142,24 +136,9 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
       return;
     }
 
-    const weightsByCategory = getTotalWeightByCategory();
-    const categoryErrors: string[] = [];
-    ['productividad', 'conducta_laboral', 'habilidades'].forEach(category => {
-      if (weightsByCategory[category as keyof typeof weightsByCategory]) {
-        const total = weightsByCategory[category as keyof typeof weightsByCategory] || 0;
-        if (total !== 100) {
-          const categoryName = {
-            productividad: 'Productividad',
-            conducta_laboral: 'Conducta Laboral',
-            habilidades: 'Habilidades'
-          }[category];
-          categoryErrors.push(`${categoryName} suma ${total}% en lugar de 100%`);
-        }
-      }
-    });
-
-    if (categoryErrors.length > 0) {
-      setError(`Verifica los pesos en los criterios: ${categoryErrors.join('; ')}`);
+    const totalWeight = getTotalWeight();
+    if (totalWeight !== 100) {
+      setError(`Los pesos de los criterios deben sumar 100% (actual: ${totalWeight}%)`);
       return;
     }
 
@@ -172,7 +151,26 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
     const templateDTO: CreateTemplateDTO = {
       name: form.name,
       description: form.description,
-      criteria: form.selectedCriteria
+      criteria: {
+        productivity: form.selectedCriteria
+          .filter(sc => sc.category === 'productividad')
+          .map(sc => ({
+            criteria_id: sc.criteriaId,
+            weight: sc.weight,
+          })),
+        work_conduct: form.selectedCriteria
+          .filter(sc => sc.category === 'conducta_laboral')
+          .map(sc => ({
+            criteria_id: sc.criteriaId,
+            weight: sc.weight,
+          })),
+        skills: form.selectedCriteria
+          .filter(sc => sc.category === 'habilidades')
+          .map(sc => ({
+            criteria_id: sc.criteriaId,
+            weight: sc.weight,
+          })),
+      },
     };
 
     try {
@@ -232,7 +230,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <FileCheck className="w-6 h-6 text-purple-500" />
-            Crear Nueva Plantilla
+            Crear Plantilla
           </h3>
           <button
             onClick={handleClose}
@@ -303,11 +301,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                           >
                             <div className="flex-1">
                               <p className="font-medium text-sm">{criteria.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {criteria.category === 'productividad' ? 'Productividad' :
-                                 criteria.category === 'conducta_laboral' ? 'Conducta Laboral' :
-                                 'Habilidades'}
-                              </p>
+                              <p className="text-xs text-gray-500">{mapCategory(criteria.category)}</p>
                               <p className="text-xs text-purple-600">
                                 Peso sugerido: {criteria.weight ? Math.round(criteria.weight * 100) : 0}%
                               </p>
@@ -331,11 +325,8 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                     <h5 className="font-medium text-gray-700">Criterios Seleccionados</h5>
                     {form.selectedCriteria.length > 0 && (
                       <div className="text-sm">
-                        <span className={`font-medium ${Object.values(getTotalWeightByCategory()).every(w => w === 100 || w === undefined) ? 'text-green-600' : 'text-red-600'}`}>
-                          Total por categoría: {Object.entries(getTotalWeightByCategory()).map(([cat, total]) => 
-                            `${cat === 'productividad' ? 'Productividad' : 
-                               cat === 'conducta_laboral' ? 'Conducta Laboral' : 
-                               'Habilidades'}: ${total || 0}%`).join(', ')}
+                        <span className={`font-medium ${getTotalWeight() === 100 ? 'text-green-600' : 'text-red-600'}`}>
+                          Total: {getTotalWeight()}%
                         </span>
                         <button
                           type="button"
@@ -360,11 +351,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{criteria?.name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {sc.category === 'productividad' ? 'Productividad' :
-                                   sc.category === 'conducta_laboral' ? 'Conducta Laboral' :
-                                   'Habilidades'}
-                                </p>
+                                <p className="text-xs text-gray-500">{mapCategory(sc.category)}</p>
                               </div>
                               <button
                                 type="button"
@@ -423,7 +410,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                 <p className="text-xs text-purple-600">
                   Pesos: {form.selectedCriteria.map(sc => {
                     const criteria = getCriteriaById(sc.criteriaId);
-                    return `${criteria?.name || 'Criterio'} (${sc.weight}% - ${sc.category === 'productividad' ? 'Productividad' : sc.category === 'conducta_laboral' ? 'Conducta Laboral' : 'Habilidades'})`;
+                    return `${criteria?.name || 'Criterio'} (${sc.weight}% - ${mapCategory(sc.category)})`;
                   }).join(', ')}
                 </p>
               </div>
@@ -443,7 +430,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                 </>
               ) : (
                 <>
-                  <Plus className="w-4 h-4" />
+                  <Save className="w-4 h-4" />
                   Crear Plantilla
                 </>
               )}

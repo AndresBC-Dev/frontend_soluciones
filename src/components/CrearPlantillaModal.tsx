@@ -120,17 +120,10 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
     const count = categoryItems.length;
     if (count === 0) return;
 
-    const baseWeight = Math.floor(100 / count);
-    const remainder = 100 - (baseWeight * count);
-
-    const updatedCriteria = form.selectedCriteria.map((criteria, index) => {
+    const baseWeight = 100 / count;
+    const updatedCriteria = form.selectedCriteria.map((criteria) => {
       if (criteria.category !== category) return criteria;
-
-      const categoryIndex = categoryItems.findIndex(item => item.criteriaId === criteria.criteriaId);
-      const isLastInCategory = categoryIndex === count - 1;
-      const weight = isLastInCategory ? baseWeight + remainder : baseWeight;
-
-      return { ...criteria, weight };
+      return { ...criteria, weight: baseWeight };
     });
 
     setForm(prev => ({
@@ -141,13 +134,14 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
 
   const validateCategoryWeights = (): { valid: boolean; message?: string } => {
     const usedCategories = getUsedCategories();
+    const tolerance = 0.01;
 
     for (const category of usedCategories) {
       const total = getTotalWeightByCategory(category);
-      if (Math.abs(total - 100) > 0.01) {
+      if (Math.abs(total - 100) > tolerance) {
         return {
           valid: false,
-          message: `Los criterios de ${mapCategory(category)} deben sumar 100% (actual: ${total}%)`,
+          message: `Los criterios de ${mapCategory(category)} deben sumar 100% (actual: ${total.toFixed(2)}%)`,
         };
       }
     }
@@ -209,11 +203,6 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
       setLoading(true);
       console.log('🔄 Sending template to backend:', templateDTO);
       const result = await createTemplate(templateDTO);
-      if (!result) {
-        setError('Ya existe una plantilla con ese nombre');
-        return;
-      }
-      // Convert Template to TemplateListItem
       const templateListItem: TemplateListItem = {
         id: result.id,
         name: result.name,
@@ -232,10 +221,24 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
       onClose();
     } catch (err: any) {
       let errorMessage = 'Error al crear la plantilla.';
-      if (err.message?.includes('validación de pesos')) {
-        errorMessage = err.message;
-      } else if (err.message?.includes('nombre')) {
-        errorMessage = 'Ya existe una plantilla con ese nombre';
+      const errStr = err.message || '';
+      if (errStr.includes('HTTP')) {
+        try {
+          const status = errStr.split('HTTP ')[1].split(': ')[0];
+          const bodyStr = errStr.split(`${status}: `)[1];
+          const parsed = JSON.parse(bodyStr);
+          if (parsed.details) {
+            errorMessage = parsed.details;
+          } else if (parsed.message) {
+            errorMessage = parsed.message;
+          } else if (parsed.error) {
+            errorMessage = parsed.error;
+          }
+        } catch (parseErr) {
+          console.error('Error parsing backend error:', parseErr);
+        }
+      } else if (errStr.includes('validación de pesos')) {
+        errorMessage = errStr;
       }
       setError(errorMessage);
     } finally {
@@ -338,7 +341,7 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                                 isValid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              Total: {categoryTotal}%
+                              Total: {categoryTotal.toFixed(2)}%
                             </span>
                             <button
                               type="button"
@@ -372,11 +375,12 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                                     type="number"
                                     value={sc.weight}
                                     onChange={(e) =>
-                                      updateCriteriaWeight(sc.criteriaId, parseInt(e.target.value) || 0)
+                                      updateCriteriaWeight(sc.criteriaId, parseFloat(e.target.value) || 0)
                                     }
                                     className="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:ring-1 focus:ring-purple-500"
-                                    min="1"
+                                    min="0.01"
                                     max="100"
+                                    step="0.01"
                                   />
                                   <Percent size={14} className="text-gray-400" />
                                 </div>

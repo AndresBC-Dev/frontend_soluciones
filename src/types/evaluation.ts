@@ -33,19 +33,68 @@ export interface Period {
   updated_at: string;
 }
 
-export interface Template {
+// Template del listado (resumen)
+export interface TemplateListItem {
   id: number;
   name: string;
   description?: string;
-  criteria: {
-    criteriaId: number;
-    weight: number;
-    category: 'productivity' | 'work_conduct' | 'skills';
-    description?: string;
-  }[];
   is_active: boolean;
+  criteria_count: number;
+  categories_used: number;
   created_at: string;
   updated_at: string;
+}
+
+// Criterio dentro de una plantilla
+export interface TemplateCriteriaItem {
+  id?: number;
+  criteria_id: number;
+  weight: number;
+  category?: string;
+  criteria?: {
+    id: number;
+    name: string;
+    description: string;
+    category: string;
+  };
+}
+
+// Template con detalles completos (del endpoint /{id})
+export interface TemplateDetail {
+  id: number;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  criteria: {
+    productivity: TemplateCriteriaItem[];
+    work_conduct: TemplateCriteriaItem[];
+    skills: TemplateCriteriaItem[];
+  };
+  summary?: {
+    total_criteria: number;
+    categories_used: number;
+    weights_summary: {
+      productivity: number;
+      work_conduct: number;
+      skills: number;
+    };
+    is_valid_weights: boolean;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+// Template tipo unificado (para compatibilidad)
+export type Template = TemplateListItem | TemplateDetail;
+
+// Helper para verificar si es TemplateDetail
+export function isTemplateDetail(template: Template): template is TemplateDetail {
+  return 'criteria' in template && typeof template.criteria === 'object';
+}
+
+// Helper para verificar si es TemplateListItem
+export function isTemplateListItem(template: Template): template is TemplateListItem {
+  return 'criteria_count' in template;
 }
 
 export interface CriteriaScore {
@@ -79,6 +128,7 @@ export interface Employee {
   first_name: string;
   last_name: string;
   email: string;
+  position: string;
   role: string;
   status: string;
   department?: string;

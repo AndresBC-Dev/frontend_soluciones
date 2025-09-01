@@ -24,6 +24,8 @@ import type {
   CreateTemplateDTO,
   CreateEvaluationsFromTemplateDTO,
   UpdatePeriodDTO,
+  TemplateListItem,
+  TemplateDetail
 } from '../types/evaluation';
 
 // Headers de autenticación
@@ -309,7 +311,7 @@ export const activatePeriod = async (id: number): Promise<Period> => {
 };
 
 // ==================== TEMPLATES ====================
-export const getTemplates = async (): Promise<Template[]> => {
+export const getTemplates = async (): Promise<TemplateListItem[]> => {
   try {
     console.log('🔍 Fetching templates...');
     const response = await fetch(`${API_BASE_URL}/templates`, {
@@ -317,11 +319,39 @@ export const getTemplates = async (): Promise<Template[]> => {
       headers: getAuthHeaders(),
     });
 
-    const data = await handleResponse<Template[]>(response);
+    const data = await handleResponse<TemplateListItem[]>(response);
     console.log('✅ Templates loaded:', data);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('❌ Error fetching templates:', error);
+    throw error;
+  }
+};
+
+// En getTemplateById(), actualizar el tipo de retorno:
+export const getTemplateById = async (id: number): Promise<TemplateDetail> => {
+  try {
+    console.log('🔍 Fetching template details:', id);
+    const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await handleResponse<TemplateDetail>(response);
+    console.log('✅ Template details loaded:', data);
+    
+    // Asegurar que criteria esté estructurado correctamente
+    return {
+      ...data,
+      is_active: data.is_active ?? true,
+      criteria: data.criteria || {
+        productivity: [],
+        work_conduct: [],
+        skills: []
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error fetching template details:', error);
     throw error;
   }
 };
@@ -378,7 +408,7 @@ export const deleteTemplate = async (id: number): Promise<void> => {
   }
 };
 
-export const cloneTemplate = async (id: number, newName?: string): Promise<Template> => {
+export const cloneTemplate = async (id: number, newName?: string): Promise<TemplateDetail> => {
   try {
     console.log('🔄 Cloning template...', id, newName);
     const body = newName ? JSON.stringify({ name: newName }) : undefined;
@@ -388,12 +418,16 @@ export const cloneTemplate = async (id: number, newName?: string): Promise<Templ
       body,
     });
 
-    const data = await handleResponse<Template>(response);
+    const data = await handleResponse<TemplateDetail>(response);
     console.log('✅ Template cloned:', data);
     return {
       ...data,
       is_active: data.is_active ?? true,
-      criteria: Array.isArray(data.criteria) ? data.criteria : [],
+      criteria: data.criteria || {
+        productivity: [],
+        work_conduct: [],
+        skills: [],
+      },
     };
   } catch (error) {
     console.error('❌ Error cloning template:', error);

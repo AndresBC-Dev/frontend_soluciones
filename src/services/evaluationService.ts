@@ -25,7 +25,9 @@ import type {
   CreateEvaluationsFromTemplateDTO,
   UpdatePeriodDTO,
   TemplateListItem,
-  TemplateDetail
+  TemplateDetail,
+  UpdateTemplateDTO
+
 } from '../types/evaluation';
 
 // Headers de autenticación
@@ -67,11 +69,11 @@ export const getCriteria = async (): Promise<Criteria[]> => {
     console.log('✅ Criteria loaded:', data);
     return Array.isArray(data)
       ? data.map(C => ({
-          ...C,
-          is_active: C.is_active ?? true,
-          can_delete: C.can_delete ?? true,
-          category: C.category as 'productividad' | 'conducta_laboral' | 'habilidades',
-        }))
+        ...C,
+        is_active: C.is_active ?? true,
+        can_delete: C.can_delete ?? true,
+        category: C.category as 'productividad' | 'conducta_laboral' | 'habilidades',
+      }))
       : [];
   } catch (error) {
     console.error('❌ Error fetching criteria:', error);
@@ -262,7 +264,7 @@ export const deactivatePeriod = async (id: number): Promise<Period> => {
     const response = await fetch(`${API_BASE_URL}/periods/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         is_active: false,
         status: 'draft'  // IMPORTANTE: Cambiar a draft para poder reactivar después
       }),
@@ -270,7 +272,7 @@ export const deactivatePeriod = async (id: number): Promise<Period> => {
 
     const data = await handleResponse<Period>(response);
     console.log('✅ Period deactivated:', data);
-    
+
     // Asegurar valores correctos
     return {
       ...data,
@@ -339,7 +341,7 @@ export const getTemplateById = async (id: number): Promise<TemplateDetail> => {
 
     const data = await handleResponse<TemplateDetail>(response);
     console.log('✅ Template details loaded:', data);
-    
+
     // Asegurar que criteria esté estructurado correctamente
     return {
       ...data,
@@ -374,7 +376,10 @@ export const createTemplate = async (templateData: CreateTemplateDTO): Promise<T
   }
 };
 
-export const updateTemplate = async (id: number, templateData: CreateTemplateDTO): Promise<Template> => {
+export const updateTemplate = async (
+  id: number,
+  templateData: UpdateTemplateDTO
+): Promise<Template> => {
   try {
     console.log('🔄 Updating template...', id, templateData);
     const response = await fetch(`${API_BASE_URL}/templates/${id}`, {

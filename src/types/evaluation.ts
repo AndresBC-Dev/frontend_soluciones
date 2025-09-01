@@ -33,7 +33,6 @@ export interface Period {
   updated_at: string;
 }
 
-// Template del listado (resumen)
 export interface TemplateListItem {
   id: number;
   name: string;
@@ -45,7 +44,6 @@ export interface TemplateListItem {
   updated_at: string;
 }
 
-// Criterio dentro de una plantilla
 export interface TemplateCriteriaItem {
   id?: number;
   CriteriaId: number;
@@ -59,7 +57,6 @@ export interface TemplateCriteriaItem {
   };
 }
 
-// Template con detalles completos (del endpoint /{id})
 export interface TemplateDetail {
   id: number;
   name: string;
@@ -84,15 +81,12 @@ export interface TemplateDetail {
   updated_at: string;
 }
 
-// Template tipo unificado (para compatibilidad)
 export type Template = TemplateListItem | TemplateDetail;
 
-// Helper para verificar si es TemplateDetail
 export function isTemplateDetail(template: Template): template is TemplateDetail {
   return 'criteria' in template && typeof template.criteria === 'object';
 }
 
-// Helper para verificar si es TemplateListItem
 export function isTemplateListItem(template: Template): template is TemplateListItem {
   return 'criteria_count' in template;
 }
@@ -160,6 +154,18 @@ export interface CreateTemplateDTO {
   name: string;
   description?: string;
   criteria: {
+    productivity: { criteria_id: number; weight: number }[];
+    work_conduct: { criteria_id: number; weight: number }[];
+    skills: { criteria_id: number; weight: number }[];
+  };
+}
+
+// 🔧 NUEVO DTO para actualizaciones parciales
+export interface UpdateTemplateDTO {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+  criteria?: {
     productivity: { criteria_id: number; weight: number }[];
     work_conduct: { criteria_id: number; weight: number }[];
     skills: { criteria_id: number; weight: number }[];

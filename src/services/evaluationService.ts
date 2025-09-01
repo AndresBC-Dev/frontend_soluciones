@@ -223,22 +223,27 @@ export const deactivatePeriod = async (id: number): Promise<Period> => {
   }
 };
 
-// Nueva función para activar período
 export const activatePeriod = async (id: number): Promise<Period> => {
   try {
-    console.log('🔄 Activating period:', id);
-    const response = await fetch(`${API_BASE_URL}/periods/${id}/activate`, {
-      method: 'POST',
+    console.log('🔄 Activating period via PATCH:', id);
+    const response = await fetch(`${API_BASE_URL}/periods/${id}/status`, {
+      method: 'PATCH',
       headers: getAuthHeaders(),
+      body: JSON.stringify({ action: "activate" }),
     });
 
     const data = await handleResponse<Period>(response);
-    console.log('✅ Period activated:', data, 'status:', data.status, 'is_active:', data.is_active);
+    console.log('✅ RAW Period activated:', data); // Ver datos crudos
+    console.log('🔍 Status field:', data.status);
+    console.log('🔍 is_active field:', data.is_active);
     
-    return {
+    const normalizedPeriod = {
       ...data,
       is_active: data.is_active ?? (data.status === 'active')
     };
+    console.log('✅ NORMALIZED Period:', normalizedPeriod);
+    
+    return normalizedPeriod;
   } catch (error) {
     console.error('❌ Error activating period:', error);
     throw error;

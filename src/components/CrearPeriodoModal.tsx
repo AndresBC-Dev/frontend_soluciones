@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Calendar, X, Loader2, Save, Plus } from 'lucide-react';
-import { createPeriod } from '../services/evaluationService';
+import { Calendar, X, Loader2, Save } from 'lucide-react';
+import { createPeriod, activatePeriod } from '../services/evaluationService';
 import { formatDateForBackend } from '../utils/dateHelpers';
 import type { Period } from '../types/evaluation';
 
@@ -16,7 +16,7 @@ interface PeriodForm {
   startDate: string;
   endDate: string;
   dueDate: string;
-  shouldActivate: boolean; // Cambio: usar shouldActivate en lugar de isActive
+  createActive: boolean; // Cambio: nombre más claro
 }
 
 const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, onCreated }) => {
@@ -26,7 +26,7 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     startDate: '',
     endDate: '',
     dueDate: '',
-    shouldActivate: true, // Por defecto queremos activar
+    createActive: true, // Por defecto crear activo
   });
 
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,6 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     if (error) setError(null);
   };
 
-  // ✅ Validaciones
   const validateForm = (): string | null => {
     if (!form.name.trim()) return 'El nombre del período es obligatorio.';
     if (!form.description.trim()) return 'La descripción es obligatoria.';
@@ -71,65 +70,52 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+  const validationError = validateForm();
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      // 1. Crear el período (siempre se crea en draft)
-      const createData = {
-        name: form.name.trim(),
-        description: form.description.trim(),
-        start_date: formatDateForBackend(form.startDate),
-        end_date: formatDateForBackend(form.endDate),
-        due_date: formatDateForBackend(form.dueDate),
-      };
+  try {
+    // 1. Crear el período
+    const createData = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      start_date: formatDateForBackend(form.startDate),
+      end_date: formatDateForBackend(form.endDate),
+      due_date: formatDateForBackend(form.dueDate),
+    };
 
-      console.log('📤 Creating period in draft mode:', createData);
-      let newPeriod = await createPeriod(createData);
-      
-      // 2. Si el usuario quiere activarlo, hacer llamada adicional para activar
-      if (form.shouldActivate) {
-        console.log('📤 Activating period:', newPeriod.id);
-        try {
-          // Llamada para activar el período
-          const activateResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/periods/${newPeriod.id}/activate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-          });
-
-          if (activateResponse.ok) {
-            const activatedData = await activateResponse.json();
-            newPeriod = activatedData.data || activatedData;
-            console.log('✅ Period activated:', newPeriod);
-          } else {
-            console.warn('⚠️ Could not activate period, but it was created successfully');
-          }
-        } catch (activateError) {
-          console.warn('⚠️ Activation failed, but period was created:', activateError);
-          // No fallar completamente si la activación falla
-        }
+    console.log('📤 Creating period:', createData);
+    let newPeriod = await createPeriod(createData);
+    console.log('📤 Period created:', newPeriod);
+    
+    // 2. Si el usuario quiere activarlo, usar la función activatePeriod
+    if (form.createActive) {
+      console.log('📤 Activating period:', newPeriod.id);
+      try {
+        newPeriod = await activatePeriod(newPeriod.id);
+        console.log('✅ Period activated:', newPeriod);
+      } catch (activateError) {
+        console.warn('⚠️ Activation failed, but period was created:', activateError);
+        // No fallar completamente si la activación falla
       }
-
-      onCreated(newPeriod);
-      handleClose();
-    } catch (err: any) {
-      console.error('❌ Error creating period:', err);
-      setError(err.message || 'Error al crear el período');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    onCreated(newPeriod);
+    handleClose();
+  } catch (err: any) {
+    console.error('❌ Error creating period:', err);
+    setError(err.message || 'Error al crear el período');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     if (loading) return;
@@ -139,13 +125,12 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
       startDate: '',
       endDate: '',
       dueDate: '',
-      shouldActivate: true,
+      createActive: true,
     });
     setError(null);
     onClose();
   };
 
-  // ✅ Sugerencias de nombres
   const generateSuggestedNames = () => {
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
@@ -161,7 +146,6 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
     ];
   };
 
-  // ✅ Formato de fecha
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -196,35 +180,18 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Nombre + Estado */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Período *</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                type="text"
-                placeholder="Ej: Q1 2025, Semestre I 2025..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                disabled={loading}
-              />
-            </div>
-            <div className="flex items-center">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  name="shouldActivate"
-                  type="checkbox"
-                  checked={form.shouldActivate}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  disabled={loading}
-                />
-                <span className="text-sm">
-                  {form.shouldActivate ? 'Activar período después de crear' : 'Crear como borrador'}
-                </span>
-              </label>
-            </div>
+          {/* Nombre */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Período *</label>
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              type="text"
+              placeholder="Ej: Q1 2025, Semestre I 2025..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+            />
           </div>
 
           {/* Descripción */}
@@ -299,6 +266,30 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
             </div>
           </div>
 
+          {/* Estado del período - UX mejorada */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                name="createActive"
+                type="checkbox"
+                checked={form.createActive}
+                onChange={handleChange}
+                className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                disabled={loading}
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-900">
+                  Crear período activo
+                </span>
+                <p className="text-xs text-gray-600 mt-1">
+                  {form.createActive 
+                    ? 'El período estará disponible inmediatamente para crear evaluaciones' 
+                    : 'El período se creará como borrador y necesitará activación manual'}
+                </p>
+              </div>
+            </label>
+          </div>
+
           {/* Preview */}
           {form.name && form.startDate && form.endDate && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -310,9 +301,15 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
                   {form.description && (
                     <p className="text-xs text-blue-600 mb-2">"{form.description}"</p>
                   )}
-                  <div className="flex items-center gap-4 text-xs text-blue-600">
-                    <span>Estado inicial: {form.shouldActivate ? 'Activo' : 'Borrador'}</span>
-                    {form.dueDate && <span>Límite: {formatDate(form.dueDate)}</span>}
+                  <div className="flex items-center gap-4 text-xs">
+                    <span className={`px-2 py-1 rounded-full ${
+                      form.createActive 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {form.createActive ? 'Activo' : 'Borrador'}
+                    </span>
+                    {form.dueDate && <span className="text-blue-600">Límite: {formatDate(form.dueDate)}</span>}
                   </div>
                 </div>
                 <Calendar className="w-8 h-8 text-blue-500 ml-4" />
@@ -330,12 +327,12 @@ const CrearPeriodoModal: React.FC<CrearPeriodoModalProps> = ({ show, onClose, on
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {form.shouldActivate ? 'Creando y Activando...' : 'Creando...'}
+                  {form.createActive ? 'Creando y Activando...' : 'Creando Borrador...'}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {form.shouldActivate ? 'Crear y Activar' : 'Crear Borrador'}
+                  {form.createActive ? 'Crear Período Activo' : 'Crear Borrador'}
                 </>
               )}
             </button>

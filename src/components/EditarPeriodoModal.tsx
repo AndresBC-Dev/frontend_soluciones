@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, X, Loader2, Save } from 'lucide-react';
-import { updatePeriod } from '../services/evaluationService';
+import { updatePeriod, activatePeriod, deactivatePeriod } from '../services/evaluationService';
 import { formatDateForBackend, formatDateFromBackend } from '../utils/dateHelpers';
 import type { Period } from '../../src/types/evaluation';
 
@@ -81,7 +81,6 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!period) return;
 
         const validationError = validateForm();
         if (validationError) {
@@ -89,21 +88,40 @@ const EditarPeriodoModal: React.FC<EditarPeriodoModalProps> = ({
             return;
         }
 
+        if (!period) return;
+
         setLoading(true);
         setError(null);
 
         try {
+            const statusChanged = form.isActive !== period.is_active;
+            console.log('🔄 Status changed?', statusChanged, 'from', period.is_active, 'to', form.isActive);
+
+            // 1. Actualizar datos básicos del período
             const updateData = {
                 name: form.name.trim(),
                 description: form.description.trim(),
                 start_date: formatDateForBackend(form.startDate),
                 end_date: formatDateForBackend(form.endDate),
                 due_date: formatDateForBackend(form.dueDate),
-                is_active: form.isActive,
             };
 
-            const updatedPeriod = await updatePeriod(period.id, updateData);
-            onUpdated(updatePeriod);
+            let updatedPeriod = await updatePeriod(period.id, updateData);
+            console.log('📊 After basic update:', updatedPeriod);
+
+            // 2. Si cambió el estado, hacer llamada adicional
+            if (statusChanged) {
+                if (form.isActive) {
+                    console.log('🔄 Activating period...');
+                    updatedPeriod = await activatePeriod(period.id);
+                } else {
+                    console.log('🔄 Deactivating period...');
+                    updatedPeriod = await deactivatePeriod(period.id);
+                }
+                console.log('📊 After status change:', updatedPeriod);
+            }
+
+            onUpdated(updatedPeriod);
             handleClose();
         } catch (err: any) {
             setError(err.message || 'Error al actualizar el período');

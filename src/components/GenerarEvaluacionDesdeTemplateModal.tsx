@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileCheck, X, Loader2, UserCheck, Users, Calendar, Target, AlertCircle, ChevronDown, ChevronUp, Search, Check } from 'lucide-react';
-import { getEmployees, getPeriods, getTemplateById, createEvaluationsFromTemplate, getUsersByRole } from '../services/evaluationService';
+import { getEmployees, getPeriods, getTemplateById, createEvaluationsFromTemplate } from '../services/evaluationService';
 import type { 
   Employee, 
   Period, 
@@ -24,7 +24,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
 }) => {
   // ============= ESTADOS PRINCIPALES =============
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [evaluators, setEvaluators] = useState<Employee[]>([]);
   const [periods, setPeriods] = useState<Period[]>([]);
   const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(null);
   
@@ -39,8 +38,10 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
   const [error, setError] = useState<string | null>(null);
   const [showCriteria, setShowCriteria] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
+  const [evaluatorSearch, setEvaluatorSearch] = useState('');
   const [selectAll, setSelectAll] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showEvaluatorList, setShowEvaluatorList] = useState(true);
 
   // ============= EFFECT: CARGAR DATOS AL ABRIR =============
   useEffect(() => {
@@ -60,15 +61,10 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
     try {
       console.log('🔄 Loading data for template:', template.name);
       
-      // Cargar todos los datos necesarios en paralelo
-      const [employeesData, evaluatorsData, periodsData, templateData] = await Promise.all([
+      const [employeesData, periodsData, templateData] = await Promise.all([
         getEmployees().catch((err) => {
           console.error('Error loading employees:', err);
           return [];
-        }),
-        getUsersByRole('evaluator').catch((err) => {
-          console.error('Error loading evaluators:', err);
-          return null;
         }),
         getPeriods().catch((err) => {
           console.error('Error loading periods:', err);
@@ -80,33 +76,16 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
         }),
       ]);
       
-      // Procesar empleados
       setEmployees(Array.isArray(employeesData) ? employeesData : []);
-      
-      // Procesar evaluadores
-      if (Array.isArray(evaluatorsData) && evaluatorsData.length > 0) {
-        setEvaluators(evaluatorsData);
-      } else {
-        // Fallback: filtrar evaluadores de la lista de empleados
-        const evaluatorRoles = ['evaluator', 'supervisor', 'hr_manager', 'admin'];
-        const filteredEvaluators = employeesData.filter(e => 
-          evaluatorRoles.includes(e.role.toLowerCase())
-        );
-        setEvaluators(filteredEvaluators);
-      }
-      
-      // Procesar períodos (solo activos)
       const activePeriods = Array.isArray(periodsData) 
         ? periodsData.filter(p => p.is_active) 
         : [];
       setPeriods(activePeriods);
       
-      // Auto-seleccionar el primer período activo
       if (activePeriods.length > 0 && !selectedPeriodId) {
         setSelectedPeriodId(activePeriods[0].id);
       }
       
-      // Cargar detalles del template
       if (templateData) {
         setTemplateDetail(templateData);
         console.log('✅ Template details loaded:', templateData);
@@ -129,17 +108,16 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
     setSelectedPeriodId(null);
     setShowCriteria(false);
     setEmployeeSearch('');
+    setEvaluatorSearch('');
     setSelectAll(false);
     setError(null);
     setSuccessMessage(null);
+    setShowEvaluatorList(true);
   };
 
   // ============= FILTRADO DE EMPLEADOS =============
   const filteredEmployees = employees.filter(employee => {
-    // No mostrar al evaluador seleccionado en la lista de evaluables
     if (employee.id === selectedEvaluatorId) return false;
-    
-    // Aplicar búsqueda
     if (!employeeSearch) return true;
     
     const searchLower = employeeSearch.toLowerCase();
@@ -147,7 +125,20 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
       employee.first_name.toLowerCase().includes(searchLower) ||
       employee.last_name.toLowerCase().includes(searchLower) ||
       employee.email.toLowerCase().includes(searchLower) ||
-      (employee.position?.toLowerCase().includes(searchLower) || false)
+      (employee.position?.toLowerCase()?.includes(searchLower) || false)
+    );
+  });
+
+  // ============= FILTRADO DE EVALUADORES =============
+  const filteredEvaluators = employees.filter(employee => {
+    if (!evaluatorSearch) return true;
+    
+    const searchLower = evaluatorSearch.toLowerCase();
+    return (
+      employee.first_name.toLowerCase().includes(searchLower) ||
+      employee.last_name.toLowerCase().includes(searchLower) ||
+      employee.email.toLowerCase().includes(searchLower) ||
+      (employee.position?.toLowerCase()?.includes(searchLower) || false)
     );
   });
 
@@ -170,11 +161,24 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
     setSelectAll(!selectAll);
   };
 
-  const handleEvaluatorChange = (evaluatorId: number) => {
-    setSelectedEvaluatorId(evaluatorId);
-    // Remover el evaluador de los empleados seleccionados si estaba
-    setSelectedEmployeeIds(prev => prev.filter(id => id !== evaluatorId));
+  const handleEvaluatorSelect = (evaluatorId: number | null) => {
+    if (selectedEvaluatorId === evaluatorId) {
+      setSelectedEvaluatorId(null);
+      setShowEvaluatorList(true);
+      setEvaluatorSearch('');
+    } else {
+      setSelectedEvaluatorId(evaluatorId);
+      setShowEvaluatorList(false);
+      setEvaluatorSearch('');
+      if (evaluatorId) {
+        setSelectedEmployeeIds(prev => prev.filter(id => id !== evaluatorId));
+      }
+    }
     setError(null);
+  };
+
+  const handleChangeEvaluator = () => {
+    setShowEvaluatorList(true);
   };
 
   // ============= UTILIDADES DE UI =============
@@ -224,7 +228,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     
-    // Validar formulario
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -247,23 +250,19 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
         period_id: selectedPeriodId,
       });
       
-      // Crear el DTO según el backend espera
       const evaluationDTO: CreateEvaluationsFromTemplateDTO = {
         template_id: template.id,
-        evaluator_id: selectedEvaluatorId!, // Ya validamos que existe
+        evaluator_id: selectedEvaluatorId!,
         employee_ids: selectedEmployeeIds,
         period_id: selectedPeriodId!,
       };
       
-      // Llamar al servicio
       const result = await createEvaluationsFromTemplate(evaluationDTO);
       
       console.log('✅ Evaluations created successfully:', result);
       
-      // Mostrar mensaje de éxito
       setSuccessMessage(`Se han creado ${selectedEmployeeIds.length} evaluaciones exitosamente`);
       
-      // Notificar al componente padre
       setTimeout(() => {
         onCreated({
           ...result,
@@ -277,7 +276,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
     } catch (err: any) {
       console.error('❌ Error creating evaluations:', err);
       
-      // Parsear error del backend
       let errorMessage = 'Error al crear las evaluaciones. Por favor, intente nuevamente.';
       
       if (err.message) {
@@ -304,13 +302,17 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
     resetForm();
     onClose();
   };
+
+  // ============= GET SELECTED EVALUATOR =============
+  const selectedEvaluator = employees.find(e => e.id === selectedEvaluatorId);
+
   if (!show || !template) return null;
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-xl">
         
-        {/* ============= HEADER ============= */}
+        {/* HEADER */}
         <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -334,7 +336,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
           </div>
         </div>
 
-        {/* ============= CONTENT ============= */}
+        {/* CONTENT */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loadingData ? (
             <div className="flex items-center justify-center py-12">
@@ -351,8 +353,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
             </div>
           ) : (
             <div className="space-y-6">
-              
-              {/* ============= TEMPLATE INFO & CRITERIA PREVIEW ============= */}
+              {/* TEMPLATE INFO & CRITERIA PREVIEW */}
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium text-purple-900">
@@ -383,7 +384,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                 
                 {showCriteria && templateDetail && (
                   <div className="mt-4 space-y-3">
-                    {/* Productividad */}
                     {templateDetail.criteria.productivity && templateDetail.criteria.productivity.length > 0 && (
                       <div>
                         <h5 className="text-sm font-medium text-purple-900 mb-2">
@@ -400,7 +400,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                       </div>
                     )}
                     
-                    {/* Conducta Laboral */}
                     {templateDetail.criteria.work_conduct && templateDetail.criteria.work_conduct.length > 0 && (
                       <div>
                         <h5 className="text-sm font-medium text-purple-900 mb-2">
@@ -417,7 +416,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                       </div>
                     )}
                     
-                    {/* Habilidades */}
                     {templateDetail.criteria.skills && templateDetail.criteria.skills.length > 0 && (
                       <div>
                         <h5 className="text-sm font-medium text-purple-900 mb-2">
@@ -437,7 +435,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                 )}
               </div>
 
-              {/* ============= PERIOD SELECTION ============= */}
+              {/* PERIOD SELECTION */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Calendar className="inline-block w-4 h-4 mr-1" />
@@ -460,42 +458,100 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                 </select>
               </div>
 
-              {/* ============= EVALUATOR SELECTION ============= */}
+              {/* EVALUATOR SELECTION */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <UserCheck className="inline-block w-4 h-4 mr-1" />
                   Evaluador Responsable
                 </label>
-                {evaluators.length === 0 ? (
-                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
-                    No hay evaluadores disponibles. Verifique que existan usuarios con rol de evaluador.
-                  </div>
-                ) : (
-                  <select
-                    value={selectedEvaluatorId || ''}
-                    onChange={(e) => handleEvaluatorChange(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                    disabled={loading}
-                  >
-                    <option value="">Seleccione un evaluador</option>
-                    {evaluators.map(evaluator => (
-                      <option key={evaluator.id} value={evaluator.id}>
-                        {evaluator.first_name} {evaluator.last_name} - {evaluator.position || evaluator.role}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <div className="transition-all duration-300">
+                  {showEvaluatorList ? (
+                    <>
+                      <div className="mb-3 relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Buscar evaluador por nombre, email o cargo..."
+                          value={evaluatorSearch}
+                          onChange={(e) => setEvaluatorSearch(e.target.value)}
+                          className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+                        {filteredEvaluators.length === 0 ? (
+                          <p className="text-center py-8 text-gray-500">
+                            {evaluatorSearch 
+                              ? 'No se encontraron evaluadores con ese criterio' 
+                              : 'No hay evaluadores disponibles'}
+                          </p>
+                        ) : (
+                          <div className="divide-y divide-gray-200">
+                            {filteredEvaluators.map(evaluator => (
+                              <label
+                                key={evaluator.id}
+                                className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                                  selectedEvaluatorId === evaluator.id ? 'bg-purple-50' : ''
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name="evaluator"
+                                  checked={selectedEvaluatorId === evaluator.id}
+                                  onChange={() => handleEvaluatorSelect(evaluator.id)}
+                                  className="mr-3 w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                                  disabled={loading}
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {evaluator.first_name} {evaluator.last_name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {evaluator.position || 'Sin cargo'} • {evaluator.email}
+                                    {evaluator.department && ` • ${evaluator.department}`}
+                                  </p>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    selectedEvaluator && (
+                      <div className="border border-gray-200 rounded-lg p-3 bg-purple-50 flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {selectedEvaluator.first_name} {selectedEvaluator.last_name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {selectedEvaluator.position || 'Sin cargo'} • {selectedEvaluator.email}
+                            {selectedEvaluator.department && ` • ${selectedEvaluator.department}`}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleChangeEvaluator}
+                            className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                            disabled={loading}
+                          >
+                            Cambiar Evaluador
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
 
-              {/* ============= EMPLOYEES SELECTION ============= */}
+              {/* EMPLOYEES SELECTION */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Users className="inline-block w-4 h-4 mr-1" />
                   Empleados a Evaluar ({selectedEmployeeIds.length} seleccionados)
                 </label>
                 
-                {/* Search bar and select all */}
                 <div className="mb-3 flex gap-2">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -518,7 +574,6 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                   </button>
                 </div>
                 
-                {/* Employee list */}
                 <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
                   {filteredEmployees.length === 0 ? (
                     <p className="text-center py-8 text-gray-500">
@@ -545,7 +600,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                               {employee.first_name} {employee.last_name}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {employee.position || employee.role} • {employee.email}
+                              {employee.position || 'Sin cargo'} • {employee.email}
                               {employee.department && ` • ${employee.department}`}
                             </p>
                           </div>
@@ -556,7 +611,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
                 </div>
               </div>
 
-              {/* ============= ERROR MESSAGE ============= */}
+              {/* ERROR MESSAGE */}
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-2">
                   <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
@@ -567,7 +622,7 @@ const GenerarEvaluacionDesdeTemplateModal: React.FC<GenerarEvaluacionDesdeTempla
           )}
         </div>
 
-        {/* ============= FOOTER ============= */}
+        {/* FOOTER */}
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center flex-shrink-0">
           <div className="text-sm text-gray-500">
             {selectedEmployeeIds.length > 0 && !successMessage && (

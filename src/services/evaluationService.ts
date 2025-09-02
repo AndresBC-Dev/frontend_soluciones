@@ -26,9 +26,11 @@ import type {
   UpdatePeriodDTO,
   TemplateListItem,
   TemplateDetail,
-  UpdateTemplateDTO
+  UpdateTemplateDTO,
 
 } from '../types/evaluation';
+
+import {isTemplateDetail } from '../types/evaluation';
 
 // Headers de autenticación
 const getAuthHeaders = () => {
@@ -390,6 +392,22 @@ export const updateTemplate = async (
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template updated:', data);
+    
+    // Si la respuesta es TemplateDetail, normalizar los arrays null
+    if (isTemplateDetail(data)) {
+      const normalizedData: TemplateDetail = {
+        ...data,
+        is_active: data.is_active ?? true,
+        criteria: {
+          productivity: data.criteria?.productivity || [],
+          work_conduct: data.criteria?.work_conduct || [],
+          skills: data.criteria?.skills || []
+        }
+      };
+      return normalizedData;
+    }
+    
+    // Si es TemplateListItem, devolver tal cual (ya viene normalizado del backend)
     return data;
   } catch (error) {
     console.error('❌ Error updating template:', error);
@@ -557,6 +575,23 @@ export const getMyEvaluations = async (): Promise<Evaluation[]> => {
     return Array.isArray(data) ? data.map(e => ({ ...e, evaluator_name: e.evaluator_name ?? 'Unknown' })) : [];
   } catch (error) {
     console.error('❌ Error fetching my evaluations:', error);
+    throw error;
+  }
+};
+
+export const getUsersByRole = async (role: string): Promise<Employee[]> => {
+  try {
+    console.log('🔍 Fetching users by role:', role);
+    const response = await fetch(`${API_BASE_URL}/references/users/${role}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await handleResponse<Employee[]>(response);
+    console.log('✅ Users loaded:', data);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('❌ Error fetching users by role:', error);
     throw error;
   }
 };

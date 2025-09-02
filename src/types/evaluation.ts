@@ -88,7 +88,7 @@ export function isTemplateDetail(template: Template): template is TemplateDetail
 }
 
 export function isTemplateListItem(template: Template): template is TemplateListItem {
-  return 'criteria_count' in template;
+  return 'criteria_count' in template && typeof template.criteria_count === 'number';
 }
 
 export interface CriteriaScore {
@@ -174,6 +174,7 @@ export interface UpdateTemplateDTO {
 
 export interface CreateEvaluationsFromTemplateDTO {
   template_id: number;
+  evaluator_id: number;
   employee_ids: number[];
   period_id: number;
 }

@@ -181,19 +181,19 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
         productivity: form.selectedCriteria
           .filter(sc => sc.category === 'productividad')
           .map(sc => ({
-            CriteriaID: sc.criteriaId,
+            criteria_id: sc.criteriaId,  // ✅ CAMBIADO: era CriteriaID, ahora criteria_id
             weight: Number(sc.weight.toFixed(2)),
           })),
         work_conduct: form.selectedCriteria
           .filter(sc => sc.category === 'conducta_laboral')
           .map(sc => ({
-            CriteriaID: sc.criteriaId,
+            criteria_id: sc.criteriaId,  // ✅ CAMBIADO: era CriteriaID, ahora criteria_id
             weight: Number(sc.weight.toFixed(2)),
           })),
         skills: form.selectedCriteria
           .filter(sc => sc.category === 'habilidades')
           .map(sc => ({
-            CriteriaID: sc.criteriaId,
+            criteria_id: sc.criteriaId,  // ✅ CAMBIADO: era CriteriaID, ahora criteria_id
             weight: Number(sc.weight.toFixed(2)),
           })),
       },
@@ -202,44 +202,80 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
     try {
       setLoading(true);
       console.log('🔄 Sending template to backend:', templateDTO);
+
+      // Log detallado para debugging
+      console.log('📊 Criteria structure:');
+      console.log('- Productivity:', templateDTO.criteria.productivity);
+      console.log('- Work Conduct:', templateDTO.criteria.work_conduct);
+      console.log('- Skills:', templateDTO.criteria.skills);
+
       const result = await createTemplate(templateDTO);
+
+      // Manejar la respuesta correctamente con type guards
+      let criteriaCount = 0;
+      let categoriesUsed = 0;
+
+      if ('criteria' in result && result.criteria) {
+        // Es TemplateDetail
+        criteriaCount =
+          (result.criteria.productivity?.length || 0) +
+          (result.criteria.work_conduct?.length || 0) +
+          (result.criteria.skills?.length || 0);
+
+        categoriesUsed = [
+          (result.criteria.productivity?.length || 0) > 0,
+          (result.criteria.work_conduct?.length || 0) > 0,
+          (result.criteria.skills?.length || 0) > 0
+        ].filter(Boolean).length;
+      } else if ('criteria_count' in result) {
+        // Es TemplateListItem
+        criteriaCount = result.criteria_count || 0;
+        categoriesUsed = result.categories_used || 0;
+      }
+
       const templateListItem: TemplateListItem = {
         id: result.id,
         name: result.name,
-        description: result.description,
+        description: result.description || '',
         is_active: result.is_active,
-        criteria_count: 'criteria' in result
-          ? Object.values(result.criteria).reduce((sum, arr) => sum + arr.length, 0)
-          : result.criteria_count || 0,
-        categories_used: 'criteria' in result
-          ? Object.values(result.criteria).filter(arr => arr.length > 0).length
-          : result.categories_used || 0,
+        criteria_count: criteriaCount,
+        categories_used: categoriesUsed,
         created_at: result.created_at,
         updated_at: result.updated_at,
       };
+
       onCreated(templateListItem);
       onClose();
     } catch (err: any) {
+      console.error('❌ Error creating template:', err);
+
       let errorMessage = 'Error al crear la plantilla.';
       const errStr = err.message || '';
+
+      // Parsear errores del backend
       if (errStr.includes('HTTP')) {
         try {
-          const status = errStr.split('HTTP ')[1].split(': ')[0];
-          const bodyStr = errStr.split(`${status}: `)[1];
-          const parsed = JSON.parse(bodyStr);
-          if (parsed.details) {
-            errorMessage = parsed.details;
-          } else if (parsed.message) {
-            errorMessage = parsed.message;
-          } else if (parsed.error) {
-            errorMessage = parsed.error;
+          const match = errStr.match(/HTTP \d+:\s*(.*)/);
+          if (match && match[1]) {
+            const parsed = JSON.parse(match[1]);
+            if (parsed.details) {
+              // Hacer el mensaje más amigable
+              if (parsed.details.includes('CriteriaID')) {
+                errorMessage = 'Error en el formato de los criterios. Por favor, verifica que todos los criterios tengan ID y peso válidos.';
+              } else if (parsed.details.includes('validación de pesos')) {
+                errorMessage = parsed.details;
+              } else {
+                errorMessage = parsed.details;
+              }
+            } else if (parsed.error) {
+              errorMessage = parsed.error;
+            }
           }
         } catch (parseErr) {
           console.error('Error parsing backend error:', parseErr);
         }
-      } else if (errStr.includes('validación de pesos')) {
-        errorMessage = errStr;
       }
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -337,9 +373,8 @@ const CrearPlantillaModal: React.FC<CrearPlantillaModalProps> = ({ show, onClose
                           </h4>
                           <div className="flex items-center gap-2">
                             <span
-                              className={`text-sm font-medium px-2 py-1 rounded ${
-                                isValid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                              }`}
+                              className={`text-sm font-medium px-2 py-1 rounded ${isValid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                }`}
                             >
                               Total: {categoryTotal.toFixed(2)}%
                             </span>

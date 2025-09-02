@@ -30,7 +30,7 @@ import type {
 
 } from '../types/evaluation';
 
-import {isTemplateDetail } from '../types/evaluation';
+import { isTemplateDetail } from '../types/evaluation';
 
 // Headers de autenticación
 const getAuthHeaders = () => {
@@ -392,7 +392,7 @@ export const updateTemplate = async (
 
     const data = await handleResponse<Template>(response);
     console.log('✅ Template updated:', data);
-    
+
     // Si la respuesta es TemplateDetail, normalizar los arrays null
     if (isTemplateDetail(data)) {
       const normalizedData: TemplateDetail = {
@@ -406,7 +406,7 @@ export const updateTemplate = async (
       };
       return normalizedData;
     }
-    
+
     // Si es TemplateListItem, devolver tal cual (ya viene normalizado del backend)
     return data;
   } catch (error) {
@@ -482,9 +482,12 @@ export const createEvaluationsFromTemplate = async (
   try {
     console.log('🔄 Creating evaluations from template...', evaluationsData);
 
+    // ✅ CORRECCIÓN: Enviar todos los campos requeridos con los nombres correctos
     const backendPayload = {
       template_id: evaluationsData.template_id,
-      user_ids: evaluationsData.employee_ids,
+      period_id: evaluationsData.period_id,        // ✅ Agregado
+      evaluator_id: evaluationsData.evaluator_id,  // ✅ Agregado
+      employee_ids: evaluationsData.employee_ids,  // ✅ Corregido de "user_ids" a "employee_ids"
     };
 
     const response = await fetch(`${API_BASE_URL}/evaluations/from-template`, {

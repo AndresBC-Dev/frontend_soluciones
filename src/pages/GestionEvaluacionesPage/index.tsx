@@ -11,6 +11,7 @@ import {
     deleteTemplate,
     deleteEvaluation,
     cloneTemplate,
+    getEvaluationForScoring,
 } from '../../services/evaluationService';
 import type { Period, Criteria, TemplateListItem, Evaluation, Stats, Template } from '../../types/evaluation';
 import HeaderSection from './components/HeaderSection';
@@ -450,9 +451,21 @@ const GestionEvaluacionesPage: React.FC = () => {
         );
     };
 
-    const handleViewEvaluation = (evaluation: Evaluation) => {
-        setEvaluationToView(evaluation);
-        setShowVerEvaluacionModal(true);
+    const handleViewEvaluation = async (evaluation: Evaluation) => {
+        try {
+            // Cargar los detalles completos con criterios
+            const fullEvaluation = await getEvaluationForScoring(evaluation.id);
+            setEvaluationToView(fullEvaluation);
+            setShowVerEvaluacionModal(true);
+        } catch (error) {
+            console.error('Error loading evaluation details:', error);
+            showConfirmation(
+                'Error',
+                'No se pudo cargar los detalles de la evaluación',
+                () => hideConfirmation(),
+                'danger'
+            );
+        }
     };
 
     const handlePerformEvaluation = (evaluation: Evaluation) => {

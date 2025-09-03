@@ -598,3 +598,40 @@ export const getUsersByRole = async (role: string): Promise<Employee[]> => {
     throw error;
   }
 };
+
+export const getEvaluationForScoring = async (evaluationId: number): Promise<any> => {
+  try {
+    console.log('🔍 Fetching evaluation details for scoring...', evaluationId);
+    const response = await fetch(`${API_BASE_URL}/evaluations/${evaluationId}/for-scoring`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const data = await handleResponse<any>(response);
+    console.log('✅ Evaluation details loaded:', data);
+    
+    // Transformar la respuesta del backend al formato esperado por el frontend
+    return {
+      id: data.id,
+      employee_id: data.employee.id,
+      employee_name: `${data.employee.first_name} ${data.employee.last_name}`,
+      evaluator_id: data.evaluator.id,
+      evaluator_name: `${data.evaluator.first_name} ${data.evaluator.last_name}`,
+      period_id: data.period.id,
+      period_name: data.period.name,
+      status: data.status,
+      criteria: data.scores?.map((score: any) => ({
+        criteriaId: score.criteria_id,
+        description: score.criteria?.name || score.criteria?.description || '',
+        category: score.criteria?.category || 'productividad',
+        weight: score.weight || 0,
+        score: score.score || undefined,
+      })) || [],
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  } catch (error) {
+    console.error('❌ Error fetching evaluation for scoring:', error);
+    throw error;
+  }
+};

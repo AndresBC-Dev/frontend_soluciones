@@ -599,6 +599,45 @@ export const getUsersByRole = async (role: string): Promise<Employee[]> => {
   }
 };
 
+// Mapeo de categorías del backend al frontend
+const mapCategory = (backendCategory: string): 'productividad' | 'conducta_laboral' | 'habilidades' => {
+  switch (backendCategory) {
+    case 'productividad':
+    case 'productivity':
+      return 'productividad';
+    case 'conducta_laboral':
+    case 'work_conduct':
+      return 'conducta_laboral';
+    case 'habilidades':
+    case 'skills':
+      return 'habilidades';
+    default:
+      console.warn('Categoría desconocida:', backendCategory);
+      return 'productividad'; // Fallback solo en casos extremos
+  }
+};
+
+// Mapeo de estados del backend (inglés) al frontend (español)
+const mapStatus = (backendStatus: string): 'pending' | 'in_progress' | 'completed' | 'overdue' => {
+  switch (backendStatus.toLowerCase()) {
+    case 'pendiente':
+    case 'pending':
+      return 'pending';
+    case 'en_progreso':
+    case 'in_progress':
+      return 'in_progress';
+    case 'completada':
+    case 'completed':
+      return 'completed';
+    case 'vencida':
+    case 'overdue':
+      return 'overdue';
+    default:
+      console.warn('Estado desconocido:', backendStatus);
+      return 'pending';
+  }
+};
+
 export const getEvaluationForScoring = async (evaluationId: number): Promise<any> => {
   try {
     console.log('🔍 Fetching evaluation details for scoring...', evaluationId);
@@ -609,8 +648,9 @@ export const getEvaluationForScoring = async (evaluationId: number): Promise<any
 
     const data = await handleResponse<any>(response);
     console.log('✅ Evaluation details loaded:', data);
+    console.log('🔍 Raw backend data:', JSON.stringify(data, null, 2));
     
-    // Transformar la respuesta del backend al formato esperado por el frontend
+    // 🔧 CORRECCIÓN: Transformar correctamente la respuesta del backend
     return {
       id: data.id,
       employee_id: data.employee.id,
@@ -619,14 +659,32 @@ export const getEvaluationForScoring = async (evaluationId: number): Promise<any
       evaluator_name: `${data.evaluator.first_name} ${data.evaluator.last_name}`,
       period_id: data.period.id,
       period_name: data.period.name,
-      status: data.status,
-      criteria: data.scores?.map((score: any) => ({
-        criteriaId: score.criteria_id,
-        description: score.criteria?.name || score.criteria?.description || '',
-        category: score.criteria?.category || 'productividad',
-        weight: score.weight || 0,
-        score: score.score || undefined,
-      })) || [],
+      
+      // 🔧 CORRECCIÓN 1: Mapear estados correctamente
+      status: mapStatus(data.status),
+      
+      // 🔧 CORRECCIÓN 2 & 3: Mapear criterios con categorías y pesos correctos
+      criteria: data.scores?.map((score: any) => {
+        console.log('🔍 Processing score:', score);
+        console.log('🔍 Score details - criteria:', score.criteria);
+        console.log('🔍 Score details - weight:', score.weight);
+        console.log('🔍 Score details - criteria.weight:', score.criteria?.weight);
+        
+        return {
+          criteriaId: score.criteria_id,
+          description: score.criteria?.name || score.criteria?.description || '',
+          
+          // 🔧 CORRECCIÓN 2: Mapear categorías correctamente
+          category: mapCategory(score.criteria?.category || 'productividad'),
+          
+          // 🔧 CORRECCIÓN 3: Usar el peso del AssignedCriteria (no del Criteria base)
+          // El backend envía el peso específico de esta evaluación en score.weight
+          // Este peso ya debe estar normalizado como decimal (ej: 0.3 para 30%)
+          weight: score.weight || 0,
+          
+          score: score.score || undefined,
+        };
+      }) || [],
       created_at: data.created_at,
       updated_at: data.updated_at,
     };
